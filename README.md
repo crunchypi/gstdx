@@ -1,0 +1,2 @@
+# gstdx
+Go stdlib extension
