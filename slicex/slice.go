@@ -1,7 +1,9 @@
 package slicex
 
 import (
+	"cmp"
 	"context"
+	"sort"
 )
 
 func New[T any](vs ...T) []T {
@@ -64,6 +66,42 @@ func ReduceFn[T any](s []T) func(reducer func(accumulate, current T) T) T {
 	return func(f func(T, T) T) T {
 		return Reduce(s, f)
 	}
+}
+
+func Contains[T comparable](s []T, v T) int {
+	r := 0
+	for _, elm := range s {
+		if elm == v {
+			r++
+		}
+	}
+
+	return r
+}
+
+func Equals[T comparable](s1, s2 []T) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+
+	for i := 0; i < len(s1); i++ {
+		if s1[i] != s2[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func Sort[T cmp.Ordered](s []T) {
+	sort.Slice(s, func(i, j int) bool { return s[i] < s[j] })
+}
+
+func Sorted[T cmp.Ordered](s []T) []T {
+	r := make([]T, len(s))
+	copy(r, s)
+	Sort(r)
+	return r
 }
 
 func IntoClone[T any](s []T) []T {
