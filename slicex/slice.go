@@ -10,9 +10,15 @@ func New[T any](vs ...T) []T {
 	return vs
 }
 
-func Filter[T any](s []T, f func(T) bool) []T {
-	if len(s) == 0 || f == nil {
+func Filter[T any, S ~[]T](s S, f func(T) bool) S {
+	if len(s) == 0 {
 		return []T{}
+	}
+
+	if f == nil {
+		r := make([]T, len(s))
+		copy(r, s)
+		return r
 	}
 
 	r := make([]T, 0, len(s))
@@ -25,13 +31,7 @@ func Filter[T any](s []T, f func(T) bool) []T {
 	return r
 }
 
-func FilterFn[T any](s []T) func(filter func(T) bool) []T {
-	return func(f func(T) bool) []T {
-		return Filter(s, f)
-	}
-}
-
-func Map[T, U any](s []T, f func(T) U) []U {
+func Map[T, U any, S ~[]T](s S, f func(T) U) []U {
 	if len(s) == 0 || f == nil {
 		return []U{}
 	}
@@ -44,13 +44,7 @@ func Map[T, U any](s []T, f func(T) U) []U {
 	return r
 }
 
-func MapFn[T, U any](s []T) func(mapper func(T) U) []U {
-	return func(f func(T) U) []U {
-		return Map(s, f)
-	}
-}
-
-func Reduce[T any](s []T, f func(accumulate, current T) T) (r T) {
+func Reduce[T any, S ~[]T](s S, f func(accumulate, current T) T) (r T) {
 	if len(s) == 0 || f == nil {
 		return r
 	}
@@ -62,13 +56,7 @@ func Reduce[T any](s []T, f func(accumulate, current T) T) (r T) {
 	return r
 }
 
-func ReduceFn[T any](s []T) func(reducer func(accumulate, current T) T) T {
-	return func(f func(T, T) T) T {
-		return Reduce(s, f)
-	}
-}
-
-func Contains[T comparable](s []T, v T) int {
+func Contains[T comparable, S ~[]T](s S, v T) int {
 	r := 0
 	for _, elm := range s {
 		if elm == v {
@@ -79,7 +67,7 @@ func Contains[T comparable](s []T, v T) int {
 	return r
 }
 
-func Equals[T comparable](s1, s2 []T) bool {
+func Equals[T comparable, S ~[]T](s1, s2 S) bool {
 	if len(s1) != len(s2) {
 		return false
 	}
@@ -93,18 +81,18 @@ func Equals[T comparable](s1, s2 []T) bool {
 	return true
 }
 
-func Sort[T cmp.Ordered](s []T) {
+func Sort[T cmp.Ordered, S ~[]T](s S) {
 	sort.Slice(s, func(i, j int) bool { return s[i] < s[j] })
 }
 
-func Sorted[T cmp.Ordered](s []T) []T {
+func Sorted[T cmp.Ordered, S ~[]T](s S) S {
 	r := make([]T, len(s))
 	copy(r, s)
 	Sort(r)
 	return r
 }
 
-func IntoClone[T any](s []T) []T {
+func IntoClone[T any, S ~[]T](s S) S {
 	r := make([]T, 0, len(s))
 	for _, v := range s {
 		r = append(r, v)
@@ -113,7 +101,7 @@ func IntoClone[T any](s []T) []T {
 	return r
 }
 
-func IntoMapK[K comparable, V any](s []K, f func(K) V) map[K]V {
+func IntoMapK[K comparable, V any, S ~[]K](s S, f func(K) V) map[K]V {
 	if len(s) == 0 {
 		return map[K]V{}
 	}
@@ -131,13 +119,7 @@ func IntoMapK[K comparable, V any](s []K, f func(K) V) map[K]V {
 	return r
 }
 
-func IntoMapKFn[K comparable, V any](s []K) func(func(K) V) map[K]V {
-	return func(f func(K) V) map[K]V {
-		return IntoMapK(s, f)
-	}
-}
-
-func IntoMapV[K comparable, V any](s []V, f func(V) K) map[K]V {
+func IntoMapV[K comparable, V any, S ~[]V](s S, f func(V) K) map[K]V {
 	if len(s) == 0 {
 		return map[K]V{}
 	}
@@ -155,13 +137,7 @@ func IntoMapV[K comparable, V any](s []V, f func(V) K) map[K]V {
 	return r
 }
 
-func IntoMapVFn[K comparable, V any](s []V) func(func(V) K) map[K]V {
-	return func(f func(V) K) map[K]V {
-		return IntoMapV(s, f)
-	}
-}
-
-func IntoChan[T any](ctx context.Context, s []T) <-chan T {
+func IntoChan[T any, S ~[]T](ctx context.Context, s S) <-chan T {
 	if len(s) == 0 {
 		r := make(chan T)
 		close(r)
@@ -188,7 +164,7 @@ func IntoChan[T any](ctx context.Context, s []T) <-chan T {
 	return r
 }
 
-func IntoGenerator[T any](s []T) func() (v T, ok bool) {
+func IntoGenerator[T any, S ~[]T](s S) func() (v T, ok bool) {
 	if len(s) == 0 {
 		return func() (v T, ok bool) { return }
 	}

@@ -91,6 +91,13 @@ func TestReduceFnWithNilF(t *testing.T) {
 	assertEq("slice", 0, r, func(s string) { t.Fatal(s) })
 }
 
+func TestContainsIdeal(t *testing.T)    {}
+func TestContainsWithNilS(t *testing.T) {}
+func TestEqualsIdeal(t *testing.T)      {}
+func TestEqualsWithNilS(t *testing.T)   {}
+func TestSortedIdeal(t *testing.T)      {}
+func TestSortedWithNilS(t *testing.T)   {}
+
 func TestIntoCloneIdeal(t *testing.T) {
 	s1 := New(1, 2, 3)
 	s2 := IntoClone(s1)
@@ -99,6 +106,8 @@ func TestIntoCloneIdeal(t *testing.T) {
 
 	assertEq("slice", New(1, 2, 3), s2, func(s string) { t.Fatal(s) })
 }
+
+func TestIntoCloneWithNilS(t *testing.T) {}
 
 func TestIntoMapKFnIdeal(t *testing.T) {
 	s1 := New(1, 2)
