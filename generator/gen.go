@@ -1,7 +1,5 @@
 package generator
 
-import "context"
-
 type Gen[T any] func() (v T, cont bool)
 
 func New[T any](vs ...T) Gen[T] {
@@ -30,7 +28,7 @@ func Filter[T any](g Gen[T], f func(T) bool) Gen[T] {
 
 	return func() (v T, cont bool) {
 		v, cont = g()
-		for ; f(v) && cont; v, cont = g() {
+		for ; cont && !f(v); v, cont = g() {
 		}
 
 		return v, cont
@@ -139,26 +137,18 @@ func IntoMapVFn[K comparable, V any](g Gen[V]) func(func(V) K) map[K]V {
 	}
 }
 
-func IntoChan[T any](ctx context.Context, g Gen[T]) <-chan T {
+func IntoChan[T any](g Gen[T]) <-chan T {
 	if g == nil {
 		r := make(chan T)
 		close(r)
 		return r
 	}
 
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
 	r := make(chan T)
 	go func() {
 		defer close(r)
 		for v, cont := g(); cont; v, cont = g() {
-			select {
-			case <-ctx.Done():
-				return
-			case r <- v:
-			}
+			r <- v
 		}
 
 	}()

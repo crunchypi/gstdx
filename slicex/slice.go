@@ -1,12 +1,10 @@
 package slicex
 
-import (
-	"cmp"
-	"context"
-	"sort"
-)
-
 func New[T any](vs ...T) []T {
+	if len(vs) == 0 {
+		return []T{}
+	}
+
 	return vs
 }
 
@@ -31,6 +29,12 @@ func Filter[T any, S ~[]T](s S, f func(T) bool) S {
 	return r
 }
 
+func FilterFn[T any, S ~[]T](s S) func(filter func(T) bool) S {
+	return func(f func(T) bool) S {
+		return Filter(s, f)
+	}
+}
+
 func Map[T, U any, S ~[]T](s S, f func(T) U) []U {
 	if len(s) == 0 || f == nil {
 		return []U{}
@@ -42,6 +46,12 @@ func Map[T, U any, S ~[]T](s S, f func(T) U) []U {
 	}
 
 	return r
+}
+
+func MapFn[T, U any, S ~[]T](s S) func(mapper func(T) U) []U {
+	return func(f func(T) U) []U {
+		return Map(s, f)
+	}
 }
 
 func Reduce[T any, S ~[]T](s S, f func(accumulate, current T) T) (r T) {
@@ -56,40 +66,10 @@ func Reduce[T any, S ~[]T](s S, f func(accumulate, current T) T) (r T) {
 	return r
 }
 
-func Contains[T comparable, S ~[]T](s S, v T) int {
-	r := 0
-	for _, elm := range s {
-		if elm == v {
-			r++
-		}
+func ReduceFn[T any, S ~[]T](s S) func(reducer func(acc, curr T) T) T {
+	return func(f func(T, T) T) T {
+		return Reduce(s, f)
 	}
-
-	return r
-}
-
-func Equals[T comparable, S ~[]T](s1, s2 S) bool {
-	if len(s1) != len(s2) {
-		return false
-	}
-
-	for i := 0; i < len(s1); i++ {
-		if s1[i] != s2[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
-func Sort[T cmp.Ordered, S ~[]T](s S) {
-	sort.Slice(s, func(i, j int) bool { return s[i] < s[j] })
-}
-
-func Sorted[T cmp.Ordered, S ~[]T](s S) S {
-	r := make([]T, len(s))
-	copy(r, s)
-	Sort(r)
-	return r
 }
 
 func IntoClone[T any, S ~[]T](s S) S {
@@ -119,6 +99,12 @@ func IntoMapK[K comparable, V any, S ~[]K](s S, f func(K) V) map[K]V {
 	return r
 }
 
+func IntoMapKFn[K comparable, V any, S ~[]K](s S) func(func(K) V) map[K]V {
+	return func(f func(K) V) map[K]V {
+		return IntoMapK(s, f)
+	}
+}
+
 func IntoMapV[K comparable, V any, S ~[]V](s S, f func(V) K) map[K]V {
 	if len(s) == 0 {
 		return map[K]V{}
@@ -137,15 +123,17 @@ func IntoMapV[K comparable, V any, S ~[]V](s S, f func(V) K) map[K]V {
 	return r
 }
 
-func IntoChan[T any, S ~[]T](ctx context.Context, s S) <-chan T {
+func IntoMapVFn[K comparable, V any, S ~[]V](s S) func(func(V) K) map[K]V {
+	return func(f func(V) K) map[K]V {
+		return IntoMapV(s, f)
+	}
+}
+
+func IntoChan[T any, S ~[]T](s S) <-chan T {
 	if len(s) == 0 {
 		r := make(chan T)
 		close(r)
 		return r
-	}
-
-	if ctx == nil {
-		ctx = context.Background()
 	}
 
 	r := make(chan T)
@@ -153,11 +141,7 @@ func IntoChan[T any, S ~[]T](ctx context.Context, s S) <-chan T {
 		defer close(r)
 
 		for _, v := range s {
-			select {
-			case <-ctx.Done():
-				return
-			case r <- v:
-			}
+			r <- v
 		}
 	}()
 

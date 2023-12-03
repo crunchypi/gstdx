@@ -1,11 +1,9 @@
-package generator
+package chanx
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
-	"time"
 )
 
 func assertEq[T any](subject string, a T, b T, f func(string)) {
@@ -27,11 +25,16 @@ func assertEq[T any](subject string, a T, b T, f func(string)) {
 	f(fmt.Sprintf(s, subject, as, bs))
 }
 
-func intoSlice[T any](g Gen[T]) []T {
-	r := make([]T, 0, 10)
-	for v, cont := g(); cont; v, cont = g() {
+func intoSlice[T any](ch <-chan T) []T {
+	if ch == nil {
+		return []T{}
+	}
+
+	r := make([]T, 0, 8)
+	for v := range ch {
 		r = append(r, v)
 	}
+
 	return r
 }
 
@@ -50,76 +53,81 @@ func TestNewWithNilS(t *testing.T) {
 }
 
 func TestFilterFnIdeal(t *testing.T) {
-	g1 := New(1, 1, 2, 3)
-	g2 := FilterFn(g1)(func(v int) bool { return v%2 == 0 })
+	ch1 := New(1, 1, 2, 3)
+	ch2 := FilterFn(ch1)(func(v int) bool { return v%2 == 0 })
 
 	want := []int{2}
-	have := intoSlice(g2)
+	have := intoSlice(ch2)
+
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
-func TestFilterFnWithNilG(t *testing.T) {
-	g1 := *new(Gen[int])
-	g2 := FilterFn[int](g1)(func(v int) bool { return false })
+func TestFilterFnWithNilC(t *testing.T) {
+	ch1 := *new(chan int)
+	ch2 := FilterFn(ch1)(func(v int) bool { return v%2 == 0 })
 
 	want := []int{}
-	have := intoSlice(g2)
+	have := intoSlice(ch2)
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
 func TestFilterFnWithNilF(t *testing.T) {
-	g1 := New(1, 2, 3)
-	g2 := FilterFn[int](g1)(nil)
+	ch1 := New(1, 1, 2, 3)
+	ch2 := FilterFn(ch1)(nil)
 
-	want := []int{1, 2, 3}
-	have := intoSlice(g2)
+	want := []int{1, 1, 2, 3}
+	have := intoSlice(ch2)
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
-func TestMapFn(t *testing.T) {
-	g1 := New(1, 2, 3)
-	g2 := MapFn[int, int](g1)(func(v int) int { return v + 1 })
+func TestMapFnIdeal(t *testing.T) {
+	ch1 := New(1, 2, 3)
+	ch2 := MapFn[int, int](ch1)(func(v int) int { return v + 1 })
 
 	want := []int{2, 3, 4}
-	have := intoSlice(g2)
+	have := intoSlice(ch2)
+
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
-func TestMapFnWithNilG(t *testing.T) {
-	g1 := *new(Gen[int])
-	g2 := MapFn[int, int](g1)(func(v int) int { return v + 1 })
+func TestMapFnWithNilC(t *testing.T) {
+	ch1 := *new(chan int)
+	ch2 := MapFn[int, int](ch1)(func(v int) int { return v + 1 })
 
 	want := []int{}
-	have := intoSlice(g2)
+	have := intoSlice(ch2)
+
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
 func TestMapFnWithNilF(t *testing.T) {
-	g1 := New(1, 2, 3)
-	g2 := MapFn[int, int](g1)(nil)
+	ch1 := New(1, 2, 3)
+	ch2 := MapFn[int, int](ch1)(nil)
 
 	want := []int{}
-	have := intoSlice(g2)
+	have := intoSlice(ch2)
+
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
 func TestReduceFnIdeal(t *testing.T) {
 	want := 6
-	have := ReduceFn[int](New(1, 2, 3))(
-		func(acc, cur int) int {
-			return acc + cur
+	have := ReduceFn(New(1, 2, 3))(
+		func(acc, curr int) int {
+			return acc + curr
 		},
 	)
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
-func TestReduceFnWithNilG(t *testing.T) {
+func TestReduceFnWithNilC(t *testing.T) {
 	want := 0
 	have := ReduceFn[int](nil)(
-		func(acc, cur int) int {
-			return acc + cur
+		func(acc, curr int) int {
+			return acc + curr
 		},
 	)
 
@@ -128,21 +136,21 @@ func TestReduceFnWithNilG(t *testing.T) {
 
 func TestReduceFnWithNilF(t *testing.T) {
 	want := 0
-	have := ReduceFn[int](New(1, 2, 3))(nil)
+	have := ReduceFn(New(1, 2, 3))(nil)
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
-func TestIntoSIdeal(t *testing.T) {
+func TestIntoSliceIdeal(t *testing.T) {
 	want := []int{1, 2, 3}
-	have := IntoS(New(want...), 3)
+	have := IntoSlice(New(want...), 3)
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
-func TestIntoSWithNilG(t *testing.T) {
+func TestIntoSliceWithNilC(t *testing.T) {
 	want := []int{}
-	have := IntoS[int](nil)
+	have := IntoSlice[int](nil)
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
@@ -150,7 +158,7 @@ func TestIntoSWithNilG(t *testing.T) {
 func TestIntoMapKFnIdeal(t *testing.T) {
 	want := map[int]int{1: 2, 2: 3, 3: 4}
 	have := IntoMapKFn[int, int](New(1, 2, 3))(
-		func(k int) (v int) {
+		func(k int) int {
 			return k + 1
 		},
 	)
@@ -158,10 +166,10 @@ func TestIntoMapKFnIdeal(t *testing.T) {
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
-func TestIntoMapKFnWithNilG(t *testing.T) {
+func TestIntoMapKFnWithNilC(t *testing.T) {
 	want := map[int]int{}
 	have := IntoMapKFn[int, int](nil)(
-		func(k int) (v int) {
+		func(k int) int {
 			return k + 1
 		},
 	)
@@ -179,19 +187,19 @@ func TestIntoMapKFnWithNilF(t *testing.T) {
 func TestIntoMapVFnIdeal(t *testing.T) {
 	want := map[int]int{1: 2, 2: 3, 3: 4}
 	have := IntoMapVFn[int, int](New(2, 3, 4))(
-		func(v int) (k int) {
-			return v - 1
+		func(k int) int {
+			return k - 1
 		},
 	)
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
-func TestIntoMapVFnWithNilG(t *testing.T) {
+func TestIntoMapVFnWithNilC(t *testing.T) {
 	want := map[int]int{}
 	have := IntoMapVFn[int, int](nil)(
-		func(v int) (k int) {
-			return v - 1
+		func(k int) int {
+			return k - 1
 		},
 	)
 
@@ -205,43 +213,25 @@ func TestIntoMapVFnWithNilF(t *testing.T) {
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
-func TestIntoChanIdeal(t *testing.T) {
+func TestIntoGenIdeal(t *testing.T) {
 	want := []int{1, 2, 3}
 	have := make([]int, 0, 3)
 
-	ctx, ctxCancel := context.WithCancel(context.Background())
-	go func() {
-		defer ctxCancel()
-		for v := range IntoChan(New(want...)) {
-			have = append(have, v)
-		}
-	}()
-
-	select {
-	case <-time.After(time.Second * 2):
-		t.Fatal("test hung")
-	case <-ctx.Done():
+	g := IntoGen(New(want...))
+	for v, cont := g(); cont; v, cont = g() {
+		have = append(have, v)
 	}
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
-func TestIntoChanWithNilG(t *testing.T) {
+func TestIntoGenWithNilC(t *testing.T) {
 	want := []int{}
 	have := make([]int, 0, 3)
 
-	ctx, ctxCancel := context.WithCancel(context.Background())
-	go func() {
-		defer ctxCancel()
-		for v := range IntoChan[int](nil) {
-			have = append(have, v)
-		}
-	}()
-
-	select {
-	case <-time.After(time.Second * 2):
-		t.Fatal("test hung")
-	case <-ctx.Done():
+	g := IntoGen[int](nil)
+	for v, cont := g(); cont; v, cont = g() {
+		have = append(have, v)
 	}
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })

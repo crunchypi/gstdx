@@ -1,6 +1,8 @@
 package endpoint
 
-import "context"
+import (
+	"context"
+)
 
 type Reader[T any] interface {
 	Read(

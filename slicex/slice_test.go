@@ -40,13 +40,17 @@ func TestFilterFnIdeal(t *testing.T) {
 }
 
 func TestFilterFnWithNilS(t *testing.T) {
-	s := FilterFn[int](nil)(func(int) bool { return false })
-	assertEq("slice", []int{}, s, func(s string) { t.Fatal(s) })
+	s1 := *new([]int)
+	s2 := FilterFn[int](s1)(func(int) bool { return false })
+
+	assertEq("slice", []int{}, s2, func(s string) { t.Fatal(s) })
 }
 
 func TestFilterFnWithNilF(t *testing.T) {
-	s := FilterFn[int](New(1, 2, 3))(nil)
-	assertEq("slice", []int{}, s, func(s string) { t.Fatal(s) })
+	s1 := New(1, 2, 3)
+	s2 := FilterFn[int](s1)(nil)
+
+	assertEq("slice", s1, s2, func(s string) { t.Fatal(s) })
 }
 
 func TestMapFnIdeal(t *testing.T) {
@@ -61,42 +65,47 @@ func TestMapFnIdeal(t *testing.T) {
 }
 
 func TestMapFnWithNilS(t *testing.T) {
-	s := MapFn[int, int](nil)(func(int) int { return 0 })
-	assertEq("slice", []int{}, s, func(s string) { t.Fatal(s) })
+	s1 := *new([]int)
+	s2 := MapFn[int, int](s1)(func(int) int { return 0 })
+
+	assertEq("slice", []int{}, s2, func(s string) { t.Fatal(s) })
 }
 
 func TestMapFnWithNilF(t *testing.T) {
-	s := MapFn[int, int](New(1, 2, 3))(nil)
-	assertEq("slice", []int{}, s, func(s string) { t.Fatal(s) })
+	s1 := New(1, 2, 3)
+	s2 := MapFn[int, int](s1)(nil)
+
+	assertEq("slice", []int{}, s2, func(s string) { t.Fatal(s) })
 }
 
 func TestReduceFnIdeal(t *testing.T) {
-	s := New(1, 2, 3)
-	r := ReduceFn(s)(
+	want := 6
+	have := ReduceFn(New(1, 2, 3))(
 		func(accumulate, current int) int {
 			return accumulate + current
 		},
 	)
 
-	assertEq("result", 6, r, func(s string) { t.Fatal(s) })
+	assertEq("result", want, have, func(s string) { t.Fatal(s) })
 }
 
 func TestReduceFnWithNilS(t *testing.T) {
-	r := ReduceFn[int](nil)(func(int, int) int { return 0 })
-	assertEq("slice", 0, r, func(s string) { t.Fatal(s) })
+	want := 0
+	have := ReduceFn[int, []int](nil)(
+		func(int, int) int {
+			return 0
+		},
+	)
+
+	assertEq("slice", want, have, func(s string) { t.Fatal(s) })
 }
 
 func TestReduceFnWithNilF(t *testing.T) {
-	r := ReduceFn[int](New(1, 2, 3))(nil)
-	assertEq("slice", 0, r, func(s string) { t.Fatal(s) })
-}
+	want := 0
+	have := ReduceFn[int](New(1, 2, 3))(nil)
 
-func TestContainsIdeal(t *testing.T)    {}
-func TestContainsWithNilS(t *testing.T) {}
-func TestEqualsIdeal(t *testing.T)      {}
-func TestEqualsWithNilS(t *testing.T)   {}
-func TestSortedIdeal(t *testing.T)      {}
-func TestSortedWithNilS(t *testing.T)   {}
+	assertEq("slice", want, have, func(s string) { t.Fatal(s) })
+}
 
 func TestIntoCloneIdeal(t *testing.T) {
 	s1 := New(1, 2, 3)
@@ -107,7 +116,12 @@ func TestIntoCloneIdeal(t *testing.T) {
 	assertEq("slice", New(1, 2, 3), s2, func(s string) { t.Fatal(s) })
 }
 
-func TestIntoCloneWithNilS(t *testing.T) {}
+func TestIntoCloneWithNilS(t *testing.T) {
+	s1 := *new([]int)
+	s2 := IntoClone(s1)
+
+	assertEq("slice", []int{}, s2, func(s string) { t.Fatal(s) })
+}
 
 func TestIntoMapKFnIdeal(t *testing.T) {
 	s1 := New(1, 2)
@@ -128,7 +142,7 @@ func TestIntoMapKFnIdeal(t *testing.T) {
 }
 
 func TestIntoMapKFnWithNilS(t *testing.T) {
-	m := IntoMapKFn[int, int](nil)(func(int) int { return 0 })
+	m := IntoMapKFn[int, int, []int](nil)(func(int) int { return 0 })
 	assertEq("len", 0, len(m), func(s string) { t.Fatal(s) })
 }
 
@@ -169,7 +183,7 @@ func TestIntoMapVFnIdeal(t *testing.T) {
 }
 
 func TestIntoMapVFnWithNilS(t *testing.T) {
-	m := IntoMapVFn[int, int](nil)(func(int) int { return 0 })
+	m := IntoMapVFn[int, int, []int](nil)(func(int) int { return 0 })
 	assertEq("len", 0, len(m), func(s string) { t.Fatal(s) })
 }
 
@@ -192,14 +206,14 @@ func TestIntoMapVFnWithNilF(t *testing.T) {
 }
 
 func TestIntoChanIdeal(t *testing.T) {
-	s1 := New(1, 2, 3)
-	s2 := New[int]()
+	want := New(1, 2, 3)
+	have := New[int]()
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	go func() {
 		defer ctxCancel()
-		for v := range IntoChan(context.Background(), s1) {
-			s2 = append(s2, v)
+		for v := range IntoChan(want) {
+			have = append(have, v)
 		}
 	}()
 
@@ -209,63 +223,18 @@ func TestIntoChanIdeal(t *testing.T) {
 	case <-ctx.Done():
 	}
 
-	assertEq("slice", s1, s2, func(s string) { t.Fatal(s) })
-}
-
-func TestIntoChanWithCancel(t *testing.T) {
-	s1 := New(1, 2, 3)
-	s2 := New[int]()
-
-	ctx := context.Background()
-
-	ctx1, ctxCancel1 := context.WithCancel(ctx) // For test hung.
-	ctx2, ctxCancel2 := context.WithCancel(ctx) // For abort.
-	go func() {
-		defer ctxCancel1()
-		for v := range IntoChan(ctx2, s1) {
-			s2 = append(s2, v)
-			ctxCancel2()
-		}
-	}()
-
-	select {
-	case <-time.After(time.Second * 2):
-		t.Fatal("test hung")
-	case <-ctx1.Done():
-	}
-
-	assertEq("slice", New(1), s2, func(s string) { t.Fatal(s) })
-}
-
-func TestIntoChanWithNilC(t *testing.T) {
-	s1 := New(1, 2, 3)
-	s2 := New[int]()
-
-	ctx, ctxCancel := context.WithCancel(context.Background())
-	go func() {
-		defer ctxCancel()
-		for v := range IntoChan(nil, s1) {
-			s2 = append(s2, v)
-		}
-	}()
-
-	select {
-	case <-time.After(time.Second * 2):
-		t.Fatal("test hung")
-	case <-ctx.Done():
-	}
-
-	assertEq("slice", s1, s2, func(s string) { t.Fatal(s) })
+	assertEq("slice", want, have, func(s string) { t.Fatal(s) })
 }
 
 func TestIntoChanWithNilS(t *testing.T) {
-	s := New[int]()
+	want := New[int]()
+	have := []int{}
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	go func() {
 		defer ctxCancel()
-		for v := range IntoChan[int](context.Background(), nil) {
-			s = append(s, v)
+		for v := range IntoChan[int, []int](nil) {
+			have = append(have, v)
 		}
 	}()
 
@@ -275,22 +244,22 @@ func TestIntoChanWithNilS(t *testing.T) {
 	case <-ctx.Done():
 	}
 
-	assertEq("slice", New[int](), s, func(s string) { t.Fatal(s) })
+	assertEq("slice", want, have, func(s string) { t.Fatal(s) })
 }
 
 func TestIntoGeneratorIdeal(t *testing.T) {
-	s1 := New(1, 2, 3)
-	s2 := New[int]()
+	want := New(1, 2, 3)
+	have := New[int]()
 
-	gen := IntoGenerator(s1)
+	gen := IntoGenerator(want)
 	for v, ok := gen(); ok; v, ok = gen() {
-		s2 = append(s2, v)
+		have = append(have, v)
 	}
 
-	assertEq("slice", s1, s2, func(s string) { t.Fatal(s) })
+	assertEq("slice", want, have, func(s string) { t.Fatal(s) })
 }
 
 func TestIntoGeneratorWithNilS(t *testing.T) {
-	_, ok := IntoGenerator[int](nil)()
+	_, ok := IntoGenerator[int, []int](nil)()
 	assertEq("bool", false, ok, func(s string) { t.Fatal(s) })
 }
