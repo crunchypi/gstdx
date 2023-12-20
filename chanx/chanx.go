@@ -100,7 +100,9 @@ func IntoSlice[T any](ch <-chan T, size ...int) []T {
 
 	l := 8
 	if len(size) > 0 {
-		l = size[0]
+		for _, v := range size {
+			l += v
+		}
 	}
 
 	r := make([]T, 0, l)
