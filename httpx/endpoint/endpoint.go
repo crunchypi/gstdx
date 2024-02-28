@@ -2,6 +2,8 @@ package endpoint
 
 import (
 	"net/http"
+
+	"github.com/crunchypi/gstdx/iox"
 )
 
 func EndNotImplemented() http.HandlerFunc {
@@ -29,7 +31,7 @@ func EndReader[T any](args EndReaderArgs[T]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Optional url param namespace.
-		ns := HFTryParseURLParamNamespace(r, args.URLParamNamespace)
+		ns := HFTryParseURLParam(r, args.URLParamNamespace)
 		if args.URLParamNamespace != "" && ns == "" {
 			s := "endpoint.EndReader: expected namespace"
 			http.Error(w, s, http.StatusInternalServerError)
@@ -63,7 +65,7 @@ func EndWriter[T any](args EndWriterArgs[T]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Optional url param namespace.
-		ns := HFTryParseURLParamNamespace(r, args.URLParamNamespace)
+		ns := HFTryParseURLParam(r, args.URLParamNamespace)
 		if args.URLParamNamespace != "" && ns == "" {
 			s := "endpoint.EndWriter: expected namespace"
 			http.Error(w, s, http.StatusInternalServerError)
@@ -103,7 +105,7 @@ func EndReadWriter[I, O any](args EndReadWriterArgs[I, O]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Optional url param namespace.
-		ns := HFTryParseURLParamNamespace(r, args.URLParamNamespace)
+		ns := HFTryParseURLParam(r, args.URLParamNamespace)
 		if args.URLParamNamespace != "" && ns == "" {
 			s := "endpoint.EndReadWriter: expected namespace"
 			http.Error(w, s, http.StatusInternalServerError)
@@ -121,5 +123,35 @@ func EndReadWriter[I, O any](args EndReadWriterArgs[I, O]) http.HandlerFunc {
 
 		// Respond.
 		HFRespond(w, out, ssc, err)
+	}
+}
+
+type EndXArgs[I, O any] struct {
+	R iox.Reader[O]
+	W iox.Writer[I]
+}
+
+func EndX[I, O any](args EndXArgs[I, O]) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		a := iox.NewB2VReader[I](r.Body)
+		for v, cont, err := a.Read(ctx); cont; v, cont, err = a.Read(ctx) {
+			if err != nil {
+				// TODO
+			}
+
+			args.W.Write(ctx, v)
+		}
+
+		b := iox.NewWriter[O](w)
+		for v, cont, err := args.R.Read(ctx); cont; v, cont, err = args.R.Read(ctx) {
+			if err != nil {
+				// TODO
+			}
+
+			b.Write(ctx, v)
+		}
+
 	}
 }

@@ -14,6 +14,10 @@ func HFUnmarshal[T any](
 	v T,
 	cont bool,
 ) {
+	if w == nil || r == nil {
+		return
+	}
+
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -33,6 +37,9 @@ func HFUnmarshal[T any](
 
 func HFMarshal(w http.ResponseWriter, v any, ssc int) {
 	if w == nil || v == nil {
+		if ssc != 0 {
+			w.WriteHeader(ssc)
+		}
 		return
 	}
 
@@ -62,7 +69,7 @@ func HFRespond(w http.ResponseWriter, v any, ssc int, err error) {
 	}
 }
 
-func HFTryParseURLParamNamespace(r *http.Request, accessor string) string {
+func HFTryParseURLParam(r *http.Request, accessor string) string {
 	ns := regexp.MustCompile("{(.+?)}").FindString(r.URL.String())
 	return ns
 }

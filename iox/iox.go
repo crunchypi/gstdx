@@ -1,66 +1,107 @@
 package iox
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"io"
 )
 
-type Buffer[T any] struct {
-	writer Writer[T]
-	buf    *bytes.Buffer
+type Encoder interface {
+	Encode(e any) error
 }
 
-func NewBuffer[T any](w Writer[T]) Buffer[T] {
-	r := Buffer[T]{}
-	r.writer = w
-	r.buf = bytes.NewBuffer([]byte{}) // <-- TODO
-	return r
+type EncoderImpl struct {
+	Impl func(e any) error
 }
 
-func (buf Buffer[T]) Write(v T) error {
-	b, _ := json.Marshal(v)
-	buf.buf.Read(b)
-	return nil
-}
-
-func (buf Buffer[T]) Read() (r T, err error) {
-	b, err := json.Marshal(r)
-	if err != nil {
-		return r, err
+func (impl EncoderImpl) Encode(e any) error {
+	if impl.Impl == nil {
+		return nil
 	}
 
-	_, err = buf.buf.Read(b)
-	if err != nil {
-		return r, err
+	return impl.Impl(e)
+}
+
+type Decoder interface {
+	Decode(e any) error
+}
+
+type DecoderImpl struct {
+	Impl func(d any) error
+}
+
+func (impl DecoderImpl) Decode(d any) error {
+	if impl.Impl == nil {
+		return nil
 	}
 
-	err = json.Unmarshal(b, &r)
-	return r, err
+	return impl.Impl(d)
 }
 
-type buffer[T any] struct {
-	Buffer[T]
-}
+// -----------------------------------------------------------------------------
 
-func (buf buffer[T]) Read(b []byte) (int, error) {
-	return buf.buf.Read(b)
-}
+func PipeV2V[T any](
+	ctx context.Context,
+	w Writer[T],
+	r Reader[T],
+) (
+	err error,
+) {
+	for v, ok, err := r.Read(ctx); ok; v, ok, err = r.Read(ctx) {
+		if err != nil {
+			return err
+		}
 
-func (buf buffer[T]) Write(b []byte) (int, error) {
-	return buf.buf.Write(b)
-}
-
-func IntoIOReader[T any](r Reader[T]) io.Reader {
-	v, err := r.Read()
-	if err != nil {
-		return bytes.NewReader([]byte{})
+		err = w.Write(ctx, v)
+		if err != nil {
+			return err
+		}
 	}
 
-	b, _ := json.Marshal(v)
-	return bytes.NewReader(b)
+	return err
 }
 
-func IntoIOWriter[T any](r Writer[T]) io.Writer {
-	return buffer[T]{Buffer[T]{writer: r, buf: bytes.NewBuffer([]byte{})}}
+func PipeB2V[T any](
+	ctx context.Context,
+	w Writer[T],
+	r io.Reader,
+	d ...func(io.Reader) Decoder,
+) (
+	err error,
+) {
+
+	xr := NewB2VReader[T](r, d...)
+	for v, ok, err := xr.Read(ctx); ok; v, ok, err = xr.Read(ctx) {
+		if err != nil {
+			return err
+		}
+
+		err = w.Write(ctx, v)
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
+}
+
+// TODO: Naming comes into conflict with io.Pipe, this is more of a "copy"
+func PipeV2B[T any](
+	ctx context.Context,
+	w io.Writer,
+	r Reader[T],
+	e ...func(io.Writer) Encoder,
+) (
+	err error,
+) {
+	ctx.Deadline()
+	xw := NewV2BWriter[T](w, e...)
+	for v, ok, err := r.Read(ctx); ok; v, ok, err = r.Read(ctx) {
+		if err != nil {
+			return err
+		}
+
+		xw.Write(ctx, v)
+	}
+
+	return err
 }

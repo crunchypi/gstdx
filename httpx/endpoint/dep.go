@@ -37,3 +37,8 @@ type ReadWriter[I, O any] interface {
 		err error,
 	)
 }
+
+type Getter[T any] Reader[T]
+type Putter[T any] Writer[T]
+type Searcher[T, U any] ReadWriter[T, U]
+type Deleter[T any] Writer[T]
