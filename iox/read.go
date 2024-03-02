@@ -121,7 +121,11 @@ func NewB2VReadCloserFn[T any](r io.ReadCloser) func(f func(io.Reader) Decoder) 
 }
 
 func NewV2BReaderFn[T any](r Reader[T]) func(f func(io.Writer) Encoder) io.Reader {
-	// TODO nils.
+	// TODO nils like below:
+	if r == nil {
+		r = ReaderImpl[T]{}
+	}
+
 	return func(f func(io.Writer) Encoder) io.Reader {
 		buf := bytes.NewBuffer(nil)
 		enc := func(w io.Writer) Encoder { return gob.NewEncoder(w) }(buf)

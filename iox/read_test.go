@@ -12,24 +12,30 @@ import (
 func TestNewV2VReaderIdeal(t *testing.T) {
 	r := NewV2VReader[int](79, 89)
 
-	have, err := r.Read(nil)
-	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("r", 79, have, func(s string) { t.Fatal(s) })
+	var val int
+	var err error
 
-	have, err = r.Read(nil)
+	val, err = r.Read(nil)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("r", 89, have, func(s string) { t.Fatal(s) })
+	assertEq("val", 79, val, func(s string) { t.Fatal(s) })
 
-	have, err = r.Read(nil)
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", 89, val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
 	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
-	assertEq("r", 0, have, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
 }
 
 func TestNewB2VReaderIdeal(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	enc := gob.NewEncoder(buf)
 
-	err := enc.Encode(79)
+	var val int
+	var err error
+
+	err = enc.Encode(79)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
 
 	err = enc.Encode(89)
@@ -37,42 +43,45 @@ func TestNewB2VReaderIdeal(t *testing.T) {
 
 	r := NewB2VReaderFn[int](buf)(nil)
 
-	have, err := r.Read(nil)
+	val, err = r.Read(nil)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("r", 79, have, func(s string) { t.Fatal(s) })
+	assertEq("val", 79, val, func(s string) { t.Fatal(s) })
 
-	have, err = r.Read(nil)
+	val, err = r.Read(nil)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("r", 89, have, func(s string) { t.Fatal(s) })
+	assertEq("val", 89, val, func(s string) { t.Fatal(s) })
 
-	have, err = r.Read(nil)
+	val, err = r.Read(nil)
 	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
-	assertEq("r", 0, have, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
 }
 
 func TestNewD2VReaderIdeal(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	enc := gob.NewEncoder(buf)
 
-	err := enc.Encode(79)
+	var val int
+	var err error
+
+	err = enc.Encode(79)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+
 	err = enc.Encode(89)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
 
 	r := NewD2VReader[int](gob.NewDecoder(buf))
 
-	// TODO standardize "val" and not "r"
-	have, err := r.Read(nil)
+	val, err = r.Read(nil)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("val", 79, have, func(s string) { t.Fatal(s) })
+	assertEq("val", 79, val, func(s string) { t.Fatal(s) })
 
-	have, err = r.Read(nil)
+	val, err = r.Read(nil)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("val", 89, have, func(s string) { t.Fatal(s) })
+	assertEq("val", 89, val, func(s string) { t.Fatal(s) })
 
-	have, err = r.Read(nil)
+	val, err = r.Read(nil)
 	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
-	assertEq("val", 0, have, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
 }
 
 func TestNewV2BReaderIdeal(t *testing.T) {
@@ -84,18 +93,15 @@ func TestNewV2BReaderIdeal(t *testing.T) {
 
 	err = gob.NewDecoder(ro).Decode(&val)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("r", 9, val, func(s string) { t.Fatal(s) })
-	val = 0
+	assertEq("val", 9, val, func(s string) { t.Fatal(s) })
 
 	err = gob.NewDecoder(ro).Decode(&val)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("r", 8, val, func(s string) { t.Fatal(s) })
-	val = 0
+	assertEq("val", 8, val, func(s string) { t.Fatal(s) })
 
 	err = gob.NewDecoder(ro).Decode(&val)
 	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
-	assertEq("r", 0, val, func(s string) { t.Fatal(s) })
-	val = 0
+	assertEq("val", 8, val, func(s string) { t.Fatal(s) })
 }
 
 func TestNewV2BReaderWithJsonEncoderIdeal(t *testing.T) {
@@ -115,18 +121,15 @@ func TestNewV2BReaderWithJsonEncoderIdeal(t *testing.T) {
 
 	err = json.NewDecoder(ro).Decode(&val)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("r", p1, val, func(s string) { t.Fatal(s) })
-	val = point{}
+	assertEq("val", p1, val, func(s string) { t.Fatal(s) })
 
 	err = json.NewDecoder(ro).Decode(&val)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("r", p2, val, func(s string) { t.Fatal(s) })
-	val = point{}
+	assertEq("val", p2, val, func(s string) { t.Fatal(s) })
 
 	err = json.NewDecoder(ro).Decode(&val)
 	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
-	assertEq("r", point{}, val, func(s string) { t.Fatal(s) })
-	val = point{}
+	assertEq("val", p2, val, func(s string) { t.Fatal(s) })
 }
 
 func TestNewBatchedVReaderIdeal(t *testing.T) {
@@ -138,50 +141,52 @@ func TestNewBatchedVReaderIdeal(t *testing.T) {
 
 func TestReadFilterFn(t *testing.T) {
 	var r Reader[int]
-	var v int
+	var val int
 	var err error
 
 	r = NewV2VReader(1, 2, 3)
 	r = ReadFilterFn(r)(func(v int) bool { return v%2 != 0 })
 
-	v, err = r.Read(nil)
+	val, err = r.Read(nil)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("val", 1, v, func(s string) { t.Fatal(s) })
+	assertEq("val", 1, val, func(s string) { t.Fatal(s) })
 
-	v, err = r.Read(nil)
+	val, err = r.Read(nil)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("val", 3, v, func(s string) { t.Fatal(s) })
+	assertEq("val", 3, val, func(s string) { t.Fatal(s) })
 
-	v, err = r.Read(nil)
+	val, err = r.Read(nil)
 	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
-	assertEq("val", 0, v, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
 }
 
 func TestReadMapFn(t *testing.T) {
 	var r Reader[int]
-	var v int
+	var val int
 	var err error
 
 	r = NewV2VReader(1, 2)
 	r = ReadMapFn[int, int](r)(func(v int) int { return v + 1 })
 
-	v, err = r.Read(nil)
+	val, err = r.Read(nil)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("val", 2, v, func(s string) { t.Fatal(s) })
+	assertEq("val", 2, val, func(s string) { t.Fatal(s) })
 
-	v, err = r.Read(nil)
+	val, err = r.Read(nil)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("val", 3, v, func(s string) { t.Fatal(s) })
+	assertEq("val", 3, val, func(s string) { t.Fatal(s) })
 
-	v, err = r.Read(nil)
+	val, err = r.Read(nil)
 	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
-	assertEq("val", 0, v, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
 }
 
 func TestReadReduceFn(t *testing.T) {
 	r := NewV2VReader(1, 2, 3)
-	v, err := ReadReduceFn(r)(func(acc, cur int) int { return acc + cur })
+	var val int
+	var err error
 
+	val, err = ReadReduceFn(r)(func(acc, cur int) int { return acc + cur })
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("val", 6, v, func(s string) { t.Fatal(s) })
+	assertEq("val", 6, val, func(s string) { t.Fatal(s) })
 }
