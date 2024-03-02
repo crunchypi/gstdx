@@ -8,40 +8,21 @@ import (
 	"io"
 )
 
-// readCloserImpl supports a functional implementation for io.ReadCloser.
-type readCloserImpl struct {
-	CImpl func() error
-	RImpl func([]byte) (int, error)
-}
+// -----------------------------------------------------------------------------
+// New Reader iface + impl.
+// -----------------------------------------------------------------------------
 
-// Close defers to readCloserImpl.CImpl.
-func (impl readCloserImpl) Close() (err error) {
-	if impl.CImpl == nil {
-		return
-	}
-
-	return impl.CImpl()
-}
-
-// TODO: what is the significanse of ok? is it that T is default
-// or io.EOF?
 type Reader[T any] interface {
-	Read(context.Context) (T, bool, error)
+	Read(context.Context) (T, error)
 }
 
 // ReaderImpl supports a functional implementation of Reader.
 type ReaderImpl[T any] struct {
-	Impl func(context.Context) (T, bool, error)
+	Impl func(context.Context) (T, error)
 }
 
 // Read defers to ReaderImpl.Impl.
-func (impl ReaderImpl[T]) Read(
-	ctx context.Context,
-) (
-	r T,
-	ok bool,
-	err error,
-) {
+func (impl ReaderImpl[T]) Read(ctx context.Context) (r T, err error) {
 	if impl.Impl == nil {
 		err = io.EOF
 		return
@@ -50,6 +31,10 @@ func (impl ReaderImpl[T]) Read(
 	return impl.Impl(ctx)
 }
 
+// -----------------------------------------------------------------------------
+// New ReadCloser iface + impl.
+// -----------------------------------------------------------------------------
+
 type ReadCloser[T any] interface {
 	io.Closer
 	Reader[T]
@@ -57,55 +42,43 @@ type ReadCloser[T any] interface {
 
 // ReadCloserImpl supports a functional implementation of ReadCloser.
 type ReadCloserImpl[T any] struct {
-	CImpl func() error
-	RImpl func(context.Context) (T, bool, error)
+	ImplC func() error
+	ImplR func(context.Context) (T, error)
 }
 
 // Close defers to ReadCloserImpl.CImpl.
 func (impl ReadCloserImpl[T]) Close() (err error) {
-	if impl.CImpl == nil {
+	if impl.ImplC == nil {
 		return
 	}
 
-	return impl.CImpl()
+	return impl.ImplC()
 }
 
 // Read defers to ReadCloserImpl.RImpl.
-func (impl ReadCloserImpl[T]) Read(
-	ctx context.Context,
-) (
-	r T,
-	ok bool,
-	err error,
-) {
-	if impl.RImpl == nil {
+func (impl ReadCloserImpl[T]) Read(ctx context.Context) (r T, err error) {
+	if impl.ImplR == nil {
 		err = io.EOF
 		return
 	}
 
-	return impl.RImpl(ctx)
+	return impl.ImplR(ctx)
 }
 
-// Read defers to readCloser.RImpl.
-func (impl readCloserImpl) Read(p []byte) (n int, err error) {
-	if impl.RImpl == nil {
-		err = io.EOF
-		return
-	}
-
-	return impl.RImpl(p)
-}
+// -----------------------------------------------------------------------------
+// Factory funcs.
+// -----------------------------------------------------------------------------
 
 func NewV2VReader[T any](vs ...T) Reader[T] {
 	i := 0
 	return ReaderImpl[T]{
-		Impl: func(ctx context.Context) (v T, ok bool, err error) {
+		Impl: func(ctx context.Context) (v T, err error) {
 			if i > len(vs)-1 {
-				return
+				return v, io.EOF
 			}
 
 			i++
-			return vs[i-1], true, nil
+			return vs[i-1], nil
 		},
 	}
 }
@@ -116,117 +89,180 @@ func NewD2VReader[T any](dec Decoder) Reader[T] {
 	}
 
 	return ReaderImpl[T]{
-		Impl: func(ctx context.Context) (v T, ok bool, err error) {
+		Impl: func(ctx context.Context) (v T, err error) {
 			err = dec.Decode(&v)
-			if errors.Is(err, io.EOF) {
-				err = nil
-				return
-			}
-
-			if err != nil {
-				return
-			}
-
-			ok = true
 			return
 		},
 	}
 }
 
-func NewB2VReadCloser[T any](
-	r io.ReadCloser,
-	d ...func(io.Reader) Decoder,
-) (
-	_ ReadCloser[T],
-) {
-	var dec Decoder
-	dec = gob.NewDecoder(r)
+func NewB2VReaderFn[T any](r io.Reader) func(f func(io.Reader) Decoder) Reader[T] {
+	return func(f func(io.Reader) Decoder) Reader[T] {
+		// TODO nils.
 
-	if len(d) > 0 {
-		last := d[len(d)-1]
-		if last != nil {
-			dec = last(r)
+		var d Decoder = gob.NewDecoder(r)
+		if f != nil {
+			if _d := f(r); _d != nil {
+				d = _d
+			}
 		}
-	}
 
-	if r == nil {
-		return ReadCloserImpl[T]{}
-	}
-
-	// TODO handle closed pipe.
-	return ReadCloserImpl[T]{
-		CImpl: r.Close,
-		RImpl: NewD2VReader[T](dec).Read,
+		return ReaderImpl[T]{Impl: NewD2VReader[T](d).Read}
 	}
 }
 
-func NewB2VReader[T any](r io.Reader, d ...func(io.Reader) Decoder) Reader[T] {
-	rc := readCloserImpl{RImpl: r.Read}
-	return NewB2VReadCloser[T](rc, d...)
-}
-
-func NewV2BReadCloser[T any](
-	r ReadCloser[T],
-	e ...func(io.Writer) Encoder,
-) (
-	_ io.ReadCloser,
-) {
-	buf := bytes.NewBuffer(nil)
-	i2e := func(w io.Writer) Encoder { return gob.NewEncoder(w) }
-
-	if len(e) > 0 {
-		last := e[len(e)-1]
-		if last != nil {
-			i2e = last
+func NewB2VReadCloserFn[T any](r io.ReadCloser) func(f func(io.Reader) Decoder) ReadCloser[T] {
+	return func(f func(io.Reader) Decoder) ReadCloser[T] {
+		return ReadCloserImpl[T]{
+			ImplC: r.Close,
+			ImplR: NewB2VReaderFn[T](r)(f).Read,
 		}
 	}
+}
 
-	if r == nil {
-		return readCloserImpl{}
+func NewV2BReaderFn[T any](r Reader[T]) func(f func(io.Writer) Encoder) io.Reader {
+	// TODO nils.
+	return func(f func(io.Writer) Encoder) io.Reader {
+		buf := bytes.NewBuffer(nil)
+		enc := func(w io.Writer) Encoder { return gob.NewEncoder(w) }(buf)
+
+		if f != nil {
+			if _e := f(buf); _e != nil {
+				enc = _e
+			}
+		}
+
+		return readWriteCloserImpl{
+			ImplR: func(p []byte) (n int, err error) {
+				// TODO cont/ok consistency.
+				v, err := r.Read(context.Background())
+				if err != nil {
+					return 0, err
+				}
+
+				err = enc.Encode(v)
+				if err != nil {
+					return 0, err
+				}
+
+				return buf.Read(p)
+			},
+		}
+	}
+}
+
+func NewV2BReadCloserFn[T any](r ReadCloser[T]) func(f func(io.Writer) Encoder) io.ReadCloser {
+	return func(f func(io.Writer) Encoder) io.ReadCloser {
+		return readWriteCloserImpl{
+			ImplC: r.Close,
+			ImplR: NewV2BReaderFn(r)(f).Read,
+		}
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Batching.
+// -----------------------------------------------------------------------------
+
+func NewBatchedVReader[T any](r Reader[T], size int) Reader[T] {
+	type result struct {
+		v   T
+		err error
 	}
 
-	enc := i2e(buf)
-	return readCloserImpl{
-		CImpl: r.Close,
-		RImpl: func(p []byte) (n int, err error) {
-			// TODO cont/ok consistency.
-			v, cont, err := r.Read(context.Background())
-			if !cont {
-				return 0, io.EOF
-			}
-			if err != nil {
-				return 0, err
+	rw := NewV2VReadWriter[result]()
+
+	return ReaderImpl[T]{
+		Impl: func(ctx context.Context) (v T, err error) {
+			_v, _err := rw.Read(ctx)
+			if errors.Is(_err, io.EOF) {
+				for i := 0; i < size; i++ {
+					res := result{}
+					res.v, res.err = r.Read(ctx)
+					rw.Write(ctx, res)
+				}
+
+				_v, _ = rw.Read(ctx)
 			}
 
-			err = enc.Encode(v)
-			if err != nil {
-				return 0, err
-			}
-
-			return buf.Read(p)
+			v, err = _v.v, _v.err
+			return
 		},
 	}
 }
 
-func NewV2BReader[T any](r Reader[T], e ...func(io.Writer) Encoder) io.Reader {
-	rc := ReadCloserImpl[T]{RImpl: r.Read}
-	return NewV2BReadCloser[T](rc, e...)
+// The above implementation should be refactored from this later.
+//func NewBatchedVReader[T any](r Reader[T], size int) Reader[T] {
+//	type result struct {
+//		v   T
+//		ok  bool
+//		err error
+//	}
+//
+//	bufs := make([]result, size)
+//	bufp := NewV2VReader[result]()
+//
+//	return ReaderImpl[T]{
+//		Impl: func(ctx context.Context) (v T, ok bool, err error) {
+//			_v, _ok, _ := bufp.Read(ctx)
+//
+//			if !_ok {
+//				for i := 0; i < size; i++ {
+//					bufs[i].v, bufs[i].ok, bufs[i].err = r.Read(ctx)
+//				}
+//
+//				bufp = NewV2VReader[result](bufs...)
+//				_v, _ok, _ = bufp.Read(ctx)
+//			}
+//
+//			v, ok, err = _v.v, _v.ok, _v.err
+//			return
+//		},
+//	}
+//}
+
+func NewBatchedSReader[T any](r Reader[T], size int) Reader[[]T] {
+	return ReaderImpl[[]T]{
+		Impl: func(ctx context.Context) (s []T, err error) {
+			s = make([]T, 0, size)
+			var v T
+			for i := 0; i < size; i++ {
+				v, err = r.Read(ctx)
+				if err != nil {
+					break
+
+				}
+
+				s = append(s, v)
+			}
+
+			if len(s) == 0 {
+				err = io.EOF
+			}
+
+			return s, err
+		},
+	}
 }
+
+// -----------------------------------------------------------------------------
+// Functional.
+// -----------------------------------------------------------------------------
 
 func ReadFilterFn[T any](r Reader[T]) func(filter func(T) bool) Reader[T] {
 	return func(filter func(v T) bool) Reader[T] {
 		return ReaderImpl[T]{
-			Impl: func(ctx context.Context) (v T, ok bool, err error) {
-				for v, ok, err := r.Read(ctx); ; v, ok, err = r.Read(ctx) {
-					if err != nil || !ok {
-						return v, ok, err
+			Impl: func(ctx context.Context) (v T, err error) {
+				for v, err := r.Read(ctx); ; v, err = r.Read(ctx) {
+					if err != nil {
+						return v, err
 					}
 
 					if !filter(v) {
 						continue
 					}
 
-					return v, ok, err
+					return v, err
 				}
 			},
 		}
@@ -236,10 +272,10 @@ func ReadFilterFn[T any](r Reader[T]) func(filter func(T) bool) Reader[T] {
 func ReadMapFn[T, U any](r Reader[T]) func(mapper func(T) U) Reader[U] {
 	return func(mapper func(T) U) Reader[U] {
 		return ReaderImpl[U]{
-			Impl: func(ctx context.Context) (vu U, ok bool, err error) {
+			Impl: func(ctx context.Context) (vu U, err error) {
 				var vt T
-				vt, ok, err = r.Read(ctx)
-				if err != nil || !ok {
+				vt, err = r.Read(ctx)
+				if err != nil {
 					return
 				}
 
@@ -252,12 +288,14 @@ func ReadMapFn[T, U any](r Reader[T]) func(mapper func(T) U) Reader[U] {
 
 func ReadReduceFn[T any](r Reader[T]) func(reducer func(T, T) T) (T, error) {
 	return func(reducer func(T, T) T) (c T, err error) {
-		for v, ok, err := r.Read(nil); ; v, ok, err = r.Read(nil) {
-			if err != nil || !ok {
+		for v, err := r.Read(nil); !errors.Is(err, io.EOF); v, err = r.Read(nil) {
+			if err != nil {
 				return c, err
 			}
 
 			c = reducer(c, v)
 		}
+
+		return
 	}
 }

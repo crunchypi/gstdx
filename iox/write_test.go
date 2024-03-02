@@ -10,7 +10,7 @@ import (
 
 func TestNewV2BWriterIdeal(t *testing.T) {
 	wo := bytes.NewBuffer(nil)
-	wx := NewV2BWriter[int](wo)
+	wx := NewV2BWriterFn[int](wo)(nil)
 
 	var v int
 	var err error
@@ -39,7 +39,7 @@ func TestNewB2VWriterIdeal(t *testing.T) {
 	var err error
 
 	wx := WriterImpl[int]{func(_ context.Context, _v int) error { v = _v; return nil }}
-	wo := NewB2VWriter(wx)
+	wo := NewB2VWriterFn(wx)(nil)
 
 	err = gob.NewEncoder(wo).Encode(1)
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })

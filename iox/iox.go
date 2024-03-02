@@ -1,9 +1,6 @@
 package iox
 
-import (
-	"context"
-	"io"
-)
+// TODO: Consider generic encoder/decoder.
 
 type Encoder interface {
 	Encode(e any) error
@@ -39,6 +36,9 @@ func (impl DecoderImpl) Decode(d any) error {
 
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+
+/*
 func PipeV2V[T any](
 	ctx context.Context,
 	w Writer[T],
@@ -105,3 +105,4 @@ func PipeV2B[T any](
 
 	return err
 }
+*/
