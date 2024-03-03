@@ -138,7 +138,6 @@ func NewV2BReaderFn[T any](r Reader[T]) func(f func(io.Writer) Encoder) io.Reade
 
 		return readWriteCloserImpl{
 			ImplR: func(p []byte) (n int, err error) {
-				// TODO cont/ok consistency.
 				v, err := r.Read(context.Background())
 				if err != nil {
 					return 0, err

@@ -8,6 +8,7 @@ import (
 	"testing"
 )
 
+// TODO Modify for xxxFn
 func TestNewV2BWriterIdeal(t *testing.T) {
 	wo := bytes.NewBuffer(nil)
 	wx := NewV2BWriterFn[int](wo)(nil)
