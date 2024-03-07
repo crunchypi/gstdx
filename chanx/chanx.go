@@ -19,77 +19,65 @@ func New[T any](vs ...T) <-chan T {
 	return r
 }
 
-func Filter[T any](ch <-chan T, f func(T) bool) <-chan T {
-	if ch == nil {
-		r := make(chan T)
-		close(r)
-		return r
-	}
-
-	if f == nil {
-		return ch
-	}
-
-	r := make(chan T)
-	go func() {
-		defer close(r)
-
-		for v := range ch {
-			if f(v) {
-				r <- v
-			}
-		}
-	}()
-
-	return r
-}
-
 func FilterFn[T any](ch <-chan T) func(func(T) bool) <-chan T {
 	return func(f func(T) bool) <-chan T {
-		return Filter(ch, f)
-	}
-}
+		if ch == nil {
+			r := make(chan T)
+			close(r)
+			return r
+		}
 
-func Map[T, U any](ch <-chan T, f func(T) U) <-chan U {
-	if ch == nil || f == nil {
-		r := make(chan U)
-		close(r)
+		if f == nil {
+			return ch
+		}
+
+		r := make(chan T)
+		go func() {
+			defer close(r)
+
+			for v := range ch {
+				if f(v) {
+					r <- v
+				}
+			}
+		}()
+
 		return r
 	}
-
-	r := make(chan U)
-	go func() {
-		defer close(r)
-
-		for v := range ch {
-			r <- f(v)
-		}
-	}()
-
-	return r
 }
 
 func MapFn[T, U any](ch <-chan T) func(func(T) U) <-chan U {
 	return func(f func(T) U) <-chan U {
-		return Map(ch, f)
-	}
-}
+		if ch == nil || f == nil {
+			r := make(chan U)
+			close(r)
+			return r
+		}
 
-func Reduce[T any](ch <-chan T, f func(acc, curr T) T) (r T) {
-	if ch == nil || f == nil {
+		r := make(chan U)
+		go func() {
+			defer close(r)
+
+			for v := range ch {
+				r <- f(v)
+			}
+		}()
+
 		return r
 	}
-
-	for v := range ch {
-		r = f(r, v)
-	}
-
-	return r
 }
 
 func ReduceFn[T any](ch <-chan T) func(func(acc, curr T) T) (r T) {
-	return func(f func(T, T) T) T {
-		return Reduce(ch, f)
+	return func(f func(acc T, curr T) T) (r T) {
+		if ch == nil || f == nil {
+			return r
+		}
+
+		for v := range ch {
+			r = f(r, v)
+		}
+
+		return r
 	}
 }
 
@@ -113,41 +101,33 @@ func IntoSlice[T any](ch <-chan T, size ...int) []T {
 	return r
 }
 
-func IntoMapK[K comparable, V any](ch <-chan K, f func(K) V) map[K]V {
-	if ch == nil || f == nil {
-		return map[K]V{}
-	}
-
-	r := make(map[K]V, 8)
-	for k := range ch {
-		r[k] = f(k)
-	}
-
-	return r
-}
-
 func IntoMapKFn[K comparable, V any](ch <-chan K) func(f func(K) V) map[K]V {
 	return func(f func(K) V) map[K]V {
-		return IntoMapK(ch, f)
-	}
-}
+		if ch == nil || f == nil {
+			return map[K]V{}
+		}
 
-func IntoMapV[K comparable, V any](ch <-chan V, f func(V) K) map[K]V {
-	if ch == nil || f == nil {
-		return map[K]V{}
-	}
+		r := make(map[K]V, 8)
+		for k := range ch {
+			r[k] = f(k)
+		}
 
-	r := make(map[K]V, 8)
-	for v := range ch {
-		r[f(v)] = v
+		return r
 	}
-
-	return r
 }
 
 func IntoMapVFn[K comparable, V any](ch <-chan V) func(f func(V) K) map[K]V {
 	return func(f func(V) K) map[K]V {
-		return IntoMapV(ch, f)
+		if ch == nil || f == nil {
+			return map[K]V{}
+		}
+
+		r := make(map[K]V, 8)
+		for v := range ch {
+			r[f(v)] = v
+		}
+
+		return r
 	}
 }
 

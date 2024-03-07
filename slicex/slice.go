@@ -8,67 +8,55 @@ func New[T any](vs ...T) []T {
 	return vs
 }
 
-func Filter[T any, S ~[]T](s S, f func(T) bool) S {
-	if len(s) == 0 {
-		return []T{}
-	}
-
-	if f == nil {
-		r := make([]T, len(s))
-		copy(r, s)
-		return r
-	}
-
-	r := make([]T, 0, len(s))
-	for _, v := range s {
-		if f(v) {
-			r = append(r, v)
-		}
-	}
-
-	return r
-}
-
 func FilterFn[T any, S ~[]T](s S) func(filter func(T) bool) S {
 	return func(f func(T) bool) S {
-		return Filter(s, f)
-	}
-}
+		if len(s) == 0 {
+			return []T{}
+		}
 
-func Map[T, U any, S ~[]T](s S, f func(T) U) []U {
-	if len(s) == 0 || f == nil {
-		return []U{}
-	}
+		if f == nil {
+			r := make([]T, len(s))
+			copy(r, s)
+			return r
+		}
 
-	r := make([]U, 0, len(s))
-	for _, v := range s {
-		r = append(r, f(v))
-	}
+		r := make([]T, 0, len(s))
+		for _, v := range s {
+			if f(v) {
+				r = append(r, v)
+			}
+		}
 
-	return r
+		return r
+	}
 }
 
 func MapFn[T, U any, S ~[]T](s S) func(mapper func(T) U) []U {
 	return func(f func(T) U) []U {
-		return Map(s, f)
-	}
-}
+		if len(s) == 0 || f == nil {
+			return []U{}
+		}
 
-func Reduce[T any, S ~[]T](s S, f func(accumulate, current T) T) (r T) {
-	if len(s) == 0 || f == nil {
+		r := make([]U, 0, len(s))
+		for _, v := range s {
+			r = append(r, f(v))
+		}
+
 		return r
 	}
-
-	for _, v := range s {
-		r = f(r, v)
-	}
-
-	return r
 }
 
 func ReduceFn[T any, S ~[]T](s S) func(reducer func(acc, curr T) T) T {
-	return func(f func(T, T) T) T {
-		return Reduce(s, f)
+	return func(f func(acc T, curr T) T) (r T) {
+		if len(s) == 0 || f == nil {
+			return r
+		}
+
+		for _, v := range s {
+			r = f(r, v)
+		}
+
+		return r
 	}
 }
 

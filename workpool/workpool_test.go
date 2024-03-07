@@ -13,7 +13,7 @@ func TestX(t *testing.T) {
 		NewArgs[any, Result[string]]{
 			N:    runtime.NumCPU(),
 			Work: chanx.New[any](1, "2", "a", "b", "3", 1.1),
-			WorkFn: func(v any) (r Result[string]) {
+			Mapper: func(v any) (r Result[string]) {
 				b, err := json.Marshal(v)
 				if err != nil {
 					return Result[string]{Err: err}

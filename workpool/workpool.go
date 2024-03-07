@@ -15,17 +15,17 @@ type Option[T any] struct {
 }
 
 type NewArgs[I, O any] struct {
-	N        int
-	Work     <-chan I
-	WorkEval func(I) bool
-	WorkFn   func(I) O
+	N      int
+	Work   <-chan I
+	Filter func(I) bool
+	Mapper func(I) O
 }
 
 func (args NewArgs[_, _]) Ok() (ok bool) {
 	ok = true
 	ok = ok && args.N > 0
 	ok = ok && args.Work != nil
-	ok = ok && args.WorkFn != nil
+	ok = ok && args.Mapper != nil
 
 	return ok
 }
@@ -45,14 +45,12 @@ func New[I, O any](args NewArgs[I, O]) <-chan O {
 			defer wg.Done()
 
 			for vi := range args.Work {
-				if args.WorkEval != nil && !args.WorkEval(vi) {
+				if args.Filter != nil && !args.Filter(vi) {
 					continue
 				}
 
-				vo := args.WorkFn(vi)
-				r <- vo
+				r <- args.Mapper(vi)
 			}
-
 		}()
 	}
 

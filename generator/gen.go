@@ -18,66 +18,54 @@ func New[T any](vs ...T) Gen[T] {
 	}
 }
 
-func Filter[T any](g Gen[T], f func(T) bool) Gen[T] {
-	if g == nil {
-		return New[T]()
-	}
-	if f == nil {
-		return g
-	}
-
-	return func() (v T, cont bool) {
-		v, cont = g()
-		for ; cont && !f(v); v, cont = g() {
-		}
-
-		return v, cont
-	}
-}
-
 func FilterFn[T any](g Gen[T]) func(rcv func(T) bool) Gen[T] {
 	return func(f func(v T) bool) Gen[T] {
-		return Filter(g, f)
-	}
-}
-
-func Map[T, U any](g Gen[T], f func(T) U) Gen[U] {
-	if g == nil || f == nil {
-		return New[U]()
-	}
-
-	return func() (vu U, cont bool) {
-		vt, cont := g()
-		if !cont {
-			return vu, cont
+		if g == nil {
+			return New[T]()
+		}
+		if f == nil {
+			return g
 		}
 
-		vu = f(vt)
-		return vu, cont
+		return func() (v T, cont bool) {
+			v, cont = g()
+			for ; cont && !f(v); v, cont = g() {
+			}
+
+			return v, cont
+		}
 	}
 }
 
 func MapFn[T, U any](g Gen[T]) func(rcv func(T) U) Gen[U] {
-	return func(rcv func(T) U) Gen[U] {
-		return Map(g, rcv)
-	}
-}
+	return func(f func(T) U) Gen[U] {
+		if g == nil || f == nil {
+			return New[U]()
+		}
 
-func Reduce[T any](g Gen[T], f func(acc, cur T) T) (r T) {
-	if g == nil || f == nil {
-		return r
-	}
+		return func() (vu U, cont bool) {
+			vt, cont := g()
+			if !cont {
+				return vu, cont
+			}
 
-	for v, cont := g(); cont; v, cont = g() {
-		r = f(r, v)
+			vu = f(vt)
+			return vu, cont
+		}
 	}
-
-	return r
 }
 
 func ReduceFn[T any](g Gen[T]) func(rcv func(T, T) T) T {
-	return func(rcv func(T, T) T) T {
-		return Reduce(g, rcv)
+	return func(f func(acc T, curr T) T) (r T) {
+		if g == nil || f == nil {
+			return r
+		}
+
+		for v, cont := g(); cont; v, cont = g() {
+			r = f(r, v)
+		}
+
+		return r
 	}
 }
 
@@ -99,41 +87,34 @@ func IntoS[T any](g Gen[T], size ...int) []T {
 	return r
 }
 
-func IntoMapK[K comparable, V any](g Gen[K], f func(K) V) map[K]V {
-	if g == nil || f == nil {
-		return map[K]V{}
-	}
-
-	r := make(map[K]V)
-	for k, cont := g(); cont; k, cont = g() {
-		r[k] = f(k)
-	}
-
-	return r
-}
-
 func IntoMapKFn[K comparable, V any](g Gen[K]) func(func(K) V) map[K]V {
-	return func(rcv func(K) V) map[K]V {
-		return IntoMapK(g, rcv)
-	}
-}
+	return func(f func(K) V) map[K]V {
+		if g == nil || f == nil {
 
-func IntoMapV[K comparable, V any](g Gen[V], f func(V) K) map[K]V {
-	if g == nil || f == nil {
-		return map[K]V{}
-	}
+			return map[K]V{}
+		}
 
-	r := make(map[K]V)
-	for v, cont := g(); cont; v, cont = g() {
-		r[f(v)] = v
-	}
+		r := make(map[K]V)
+		for k, cont := g(); cont; k, cont = g() {
+			r[k] = f(k)
+		}
 
-	return r
+		return r
+	}
 }
 
 func IntoMapVFn[K comparable, V any](g Gen[V]) func(func(V) K) map[K]V {
-	return func(rcv func(V) K) map[K]V {
-		return IntoMapV(g, rcv)
+	return func(f func(V) K) map[K]V {
+		if g == nil || f == nil {
+			return map[K]V{}
+		}
+
+		r := make(map[K]V)
+		for v, cont := g(); cont; v, cont = g() {
+			r[f(v)] = v
+		}
+
+		return r
 	}
 }
 
