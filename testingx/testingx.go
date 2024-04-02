@@ -44,6 +44,7 @@ func AssertNeq[T, U any](subject string, a T, b U, f func(string)) {
 	f(fmt.Sprintf(s, subject, as))
 }
 
+// TODO: Consider moving this to httpx/endpoint.
 type ResponseWriterImpl struct {
 	ImplHeader      func() http.Header
 	ImplWrite       func([]byte) (int, error)

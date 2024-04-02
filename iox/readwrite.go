@@ -156,9 +156,9 @@ func NewT2UReadWriterFn[T, U any](
 func NewT2UReadWriteCloserFn[T, U any](
 	rw io.ReadWriteCloser,
 ) (
-	_ func(d func(io.Reader) Decoder, e func(io.Writer) Encoder) (_ ReadWriter[T, U]),
+	_ func(d func(io.Reader) Decoder, e func(io.Writer) Encoder) (_ ReadWriteCloser[T, U]),
 ) {
-	return func(d func(io.Reader) Decoder, e func(io.Writer) Encoder) (_ ReadWriter[T, U]) {
+	return func(d func(io.Reader) Decoder, e func(io.Writer) Encoder) (_ ReadWriteCloser[T, U]) {
 		return ReadWriteCloserImpl[T, U]{
 			ImplC: rw.Close,
 			ImplR: NewB2VReaderFn[T](rw)(d).Read,

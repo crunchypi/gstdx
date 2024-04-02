@@ -91,7 +91,7 @@ func TestReduceFnIdeal(t *testing.T) {
 
 func TestReduceFnWithNilS(t *testing.T) {
 	want := 0
-	have := ReduceFn[int, []int](nil)(
+	have := ReduceFn[int](nil)(
 		func(int, int) int {
 			return 0
 		},
@@ -142,7 +142,7 @@ func TestIntoMapKFnIdeal(t *testing.T) {
 }
 
 func TestIntoMapKFnWithNilS(t *testing.T) {
-	m := IntoMapKFn[int, int, []int](nil)(func(int) int { return 0 })
+	m := IntoMapKFn[int, int](nil)(func(int) int { return 0 })
 	assertEq("len", 0, len(m), func(s string) { t.Fatal(s) })
 }
 
@@ -183,7 +183,7 @@ func TestIntoMapVFnIdeal(t *testing.T) {
 }
 
 func TestIntoMapVFnWithNilS(t *testing.T) {
-	m := IntoMapVFn[int, int, []int](nil)(func(int) int { return 0 })
+	m := IntoMapVFn[int, int](nil)(func(int) int { return 0 })
 	assertEq("len", 0, len(m), func(s string) { t.Fatal(s) })
 }
 
@@ -233,7 +233,7 @@ func TestIntoChanWithNilS(t *testing.T) {
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	go func() {
 		defer ctxCancel()
-		for v := range IntoChan[int, []int](nil) {
+		for v := range IntoChan[int](nil) {
 			have = append(have, v)
 		}
 	}()
@@ -260,6 +260,6 @@ func TestIntoGeneratorIdeal(t *testing.T) {
 }
 
 func TestIntoGeneratorWithNilS(t *testing.T) {
-	_, ok := IntoGenerator[int, []int](nil)()
+	_, ok := IntoGenerator[int](nil)()
 	assertEq("bool", false, ok, func(s string) { t.Fatal(s) })
 }

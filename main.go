@@ -1,91 +1,64 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
+	"crypto/md5"
 	"fmt"
-	"io"
-	"net/http"
+	"slices"
 
-	"github.com/crunchypi/gstdx/generator"
-	"github.com/crunchypi/gstdx/iox"
+	"github.com/crunchypi/gstdx/mapx"
+	"github.com/crunchypi/gstdx/slicex"
 )
 
-func MidMethodWrap(s string, f http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != s {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-
-		f(w, r)
-	}
+type Item struct {
+	S string
 }
 
-type EndSaveResourceArgs[T any] struct {
-	Writer iox.Writer[T]
+type Hash = string
+
+var whitelistKeys = []string{"a", "b", "c"}
+
+func test(m map[string]Item) (r map[string]Hash) {
+	m = mapx.FilterKFn(m)(
+		func(k string) bool {
+			inSlice := slices.Contains(whitelistKeys, k)
+			return !inSlice
+		},
+	)
+
+	m = mapx.FilterVFn(m)(
+		func(v Item) bool {
+			return v.S != ""
+		},
+	)
+
+	r = mapx.MapVFn[string, Item, string](m)(
+		func(v Item) Hash {
+			b := md5.Sum([]byte(v.S))
+			return fmt.Sprintf("%x", b[:])
+		},
+	)
+
+	return r
 }
 
-func EndSaveResource[T any](args EndSaveResourceArgs[T]) http.HandlerFunc {
-	dec := func(r io.Reader) iox.Decoder { return json.NewDecoder(r) }
+type S []string
 
-	return func(w http.ResponseWriter, r *http.Request) {
-		r.Body.Close()
+func testSlice(ss S) (r int) {
+	ss = slicex.FilterFn(ss)(
+		func(v string) bool {
+			return !slices.Contains(whitelistKeys, v)
+		},
+	)
 
-		err := iox.PipeB2V[T](r.Context(), args.Writer, r.Body, dec)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	}
-}
+	is := slicex.MapFn[string, int](ss)(
+		func(v string) int {
+			return 0
+		},
+	)
 
-type EndLoadResourceArgs[T any] struct {
-	Reader iox.Reader[T]
-}
-
-func EndLoadResource[T any](args EndLoadResourceArgs[T]) http.HandlerFunc {
-	enc := func(w io.Writer) iox.Encoder { return json.NewEncoder(w) }
-	return func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-
-		err := iox.PipeV2B(r.Context(), w, args.Reader, enc)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	}
-}
-
-func main() {
-	type T string
-
-	g := generator.New[T]("1", "2", "3")
-
-	routes := map[string]http.HandlerFunc{
-		"/": EndSaveResource(
-			EndSaveResourceArgs[T]{
-				Writer: iox.WriterImpl[T]{
-					Impl: func(_ context.Context, v T) error {
-						fmt.Println(v)
-						return nil
-					},
-				},
-			},
-		),
-		"/g": EndLoadResource(
-			EndLoadResourceArgs[T]{
-				Reader: iox.ReaderImpl[T]{
-					Impl: func(_ context.Context) (v T, ok bool, err error) {
-						v, ok = g()
-						return
-					},
-				},
-			},
-		),
-	}
-
-	for k, v := range routes {
-		http.Handle(k, MidMethodWrap("POST", v))
-	}
-
-	http.ListenAndServe(":8080", nil)
+	return slicex.ReduceFn(is)(
+		func(acc, curr int) int {
+			return acc + curr
+		},
+	)
 }

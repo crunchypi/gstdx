@@ -8,8 +8,8 @@ func New[T any](vs ...T) []T {
 	return vs
 }
 
-func FilterFn[T any, S ~[]T](s S) func(filter func(T) bool) S {
-	return func(f func(T) bool) S {
+func FilterFn[T any](s []T) func(filter func(T) bool) []T {
+	return func(f func(T) bool) []T {
 		if len(s) == 0 {
 			return []T{}
 		}
@@ -31,7 +31,7 @@ func FilterFn[T any, S ~[]T](s S) func(filter func(T) bool) S {
 	}
 }
 
-func MapFn[T, U any, S ~[]T](s S) func(mapper func(T) U) []U {
+func MapFn[T, U any](s []T) func(mapper func(T) U) []U {
 	return func(f func(T) U) []U {
 		if len(s) == 0 || f == nil {
 			return []U{}
@@ -46,7 +46,7 @@ func MapFn[T, U any, S ~[]T](s S) func(mapper func(T) U) []U {
 	}
 }
 
-func ReduceFn[T any, S ~[]T](s S) func(reducer func(acc, curr T) T) T {
+func ReduceFn[T any](s []T) func(reducer func(acc, curr T) T) T {
 	return func(f func(acc T, curr T) T) (r T) {
 		if len(s) == 0 || f == nil {
 			return r
@@ -60,16 +60,15 @@ func ReduceFn[T any, S ~[]T](s S) func(reducer func(acc, curr T) T) T {
 	}
 }
 
-func IntoClone[T any, S ~[]T](s S) S {
-	r := make([]T, 0, len(s))
-	for _, v := range s {
-		r = append(r, v)
-	}
+func IntoClone[T any](s []T) []T {
+	r := make([]T, len(s))
+	copy(r, s)
 
 	return r
 }
 
-func IntoMapK[K comparable, V any, S ~[]K](s S, f func(K) V) map[K]V {
+// TODO: Inconsistency with IntoMapKFn (the Fn part).
+func IntoMapK[K comparable, V any](s []K, f func(K) V) map[K]V {
 	if len(s) == 0 {
 		return map[K]V{}
 	}
@@ -87,13 +86,13 @@ func IntoMapK[K comparable, V any, S ~[]K](s S, f func(K) V) map[K]V {
 	return r
 }
 
-func IntoMapKFn[K comparable, V any, S ~[]K](s S) func(func(K) V) map[K]V {
+func IntoMapKFn[K comparable, V any](s []K) func(func(K) V) map[K]V {
 	return func(f func(K) V) map[K]V {
 		return IntoMapK(s, f)
 	}
 }
 
-func IntoMapV[K comparable, V any, S ~[]V](s S, f func(V) K) map[K]V {
+func IntoMapV[K comparable, V any](s []V, f func(V) K) map[K]V {
 	if len(s) == 0 {
 		return map[K]V{}
 	}
@@ -111,13 +110,13 @@ func IntoMapV[K comparable, V any, S ~[]V](s S, f func(V) K) map[K]V {
 	return r
 }
 
-func IntoMapVFn[K comparable, V any, S ~[]V](s S) func(func(V) K) map[K]V {
+func IntoMapVFn[K comparable, V any](s []V) func(func(V) K) map[K]V {
 	return func(f func(V) K) map[K]V {
 		return IntoMapV(s, f)
 	}
 }
 
-func IntoChan[T any, S ~[]T](s S) <-chan T {
+func IntoChan[T any](s []T) <-chan T {
 	if len(s) == 0 {
 		r := make(chan T)
 		close(r)
@@ -136,7 +135,7 @@ func IntoChan[T any, S ~[]T](s S) <-chan T {
 	return r
 }
 
-func IntoGenerator[T any, S ~[]T](s S) func() (v T, ok bool) {
+func IntoGenerator[T any](s []T) func() (v T, ok bool) {
 	if len(s) == 0 {
 		return func() (v T, ok bool) { return }
 	}

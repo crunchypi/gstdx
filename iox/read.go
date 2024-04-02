@@ -253,6 +253,7 @@ func NewBatchedSReader[T any](r Reader[T], size int) Reader[[]T] {
 // -----------------------------------------------------------------------------
 
 func ReadFilterFn[T any](r Reader[T]) func(filter func(T) bool) Reader[T] {
+	// TODO: nils.
 	return func(filter func(v T) bool) Reader[T] {
 		return ReaderImpl[T]{
 			Impl: func(ctx context.Context) (v T, err error) {

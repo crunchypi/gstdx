@@ -3,9 +3,7 @@ package main
 import (
 	"context"
 	"net/http"
-	"time"
 
-	"github.com/crunchypi/gstdx/cmd/etl/pkg/etl"
 	"github.com/crunchypi/gstdx/iox"
 )
 
@@ -32,13 +30,15 @@ func NewPostWriter[T any]() iox.Writer[T] {
 	}
 }
 
+/*
 func x() {
 	nr := iox.NewV2VReader(1, 2, 3)
 	sr := etl.NewSleepVReader(nr, time.Second)
 	pr := etl.NewPageReader(sr, 2)
-	xr := iox.ReadMapFn[etl.Page, etl.Page](pr)(
-		func(page etl.Page) etl.Page {
-			return page
+	xr := iox.ReadMapFn[etl.Page, map[string]any](pr)(
+		func(page etl.Page) map[string]any {
+			return map[string]any{"s": page.Skip, "l"}
 		},
 	)
 }
+*/
