@@ -38,3 +38,28 @@ func TestNewWithNone(t *testing.T) {
 
 	assertEq("slice", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestFilterFnIdeal(t *testing.T) {
+	s1 := New(1, 2, 3, 4)
+	s2 := FilterFn(s1)(
+		func(v int) bool {
+			return v%2 == 0
+		},
+	)
+
+	assertEq("slice", []int{2, 4}, s2, func(s string) { t.Fatal(s) })
+}
+
+func TestFilterFnWithNilS(t *testing.T) {
+	s1 := *new([]int)
+	s2 := FilterFn[int](s1)(func(int) bool { return false })
+
+	assertEq("slice", []int{}, s2, func(s string) { t.Fatal(s) })
+}
+
+func TestFilterFnWithNilF(t *testing.T) {
+	s1 := New(1, 2, 3)
+	s2 := FilterFn[int](s1)(nil)
+
+	assertEq("slice", s1, s2, func(s string) { t.Fatal(s) })
+}
