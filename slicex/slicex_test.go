@@ -63,3 +63,28 @@ func TestFilterFnWithNilF(t *testing.T) {
 
 	assertEq("slice", s1, s2, func(s string) { t.Fatal(s) })
 }
+
+func TestMapFnIdeal(t *testing.T) {
+	s1 := New(1, 2, 3)
+	s2 := MapFn[int, int](s1)(
+		func(v int) int {
+			return v + 1
+		},
+	)
+
+	assertEq("slice", []int{2, 3, 4}, s2, func(s string) { t.Fatal(s) })
+}
+
+func TestMapFnWithNilS(t *testing.T) {
+	s1 := *new([]int)
+	s2 := MapFn[int, int](s1)(func(int) int { return 0 })
+
+	assertEq("slice", []int{}, s2, func(s string) { t.Fatal(s) })
+}
+
+func TestMapFnWithNilF(t *testing.T) {
+	s1 := New(1, 2, 3)
+	s2 := MapFn[int, int](s1)(nil)
+
+	assertEq("slice", []int{}, s2, func(s string) { t.Fatal(s) })
+}
