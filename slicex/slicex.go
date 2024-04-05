@@ -71,3 +71,28 @@ func MapFn[T, U any, S ~[]T](s S) func(mapper func(T) U) []U {
 		return r
 	}
 }
+
+// ReduceFn returns a func which reduces 's' into T using a given reducer.
+// Example:
+//
+//	want := 6
+//	have := ReduceFn(New(1, 2, 3))(
+//		func(accumulate, current int) int {
+//			return accumulate + current
+//		},
+//	)
+//
+//	// want == have is true.
+func ReduceFn[T any, S ~[]T](s S) func(reducer func(acc, curr T) T) T {
+	return func(f func(acc T, curr T) T) (r T) {
+		if len(s) == 0 || f == nil {
+			return r
+		}
+
+		for _, v := range s {
+			r = f(r, v)
+		}
+
+		return r
+	}
+}

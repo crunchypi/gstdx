@@ -88,3 +88,32 @@ func TestMapFnWithNilF(t *testing.T) {
 
 	assertEq("slice", []int{}, s2, func(s string) { t.Fatal(s) })
 }
+
+func TestReduceFnIdeal(t *testing.T) {
+	want := 6
+	have := ReduceFn(New(1, 2, 3))(
+		func(accumulate, current int) int {
+			return accumulate + current
+		},
+	)
+
+	assertEq("result", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestReduceFnWithNilS(t *testing.T) {
+	want := 0
+	have := ReduceFn[int, []int](nil)(
+		func(int, int) int {
+			return 0
+		},
+	)
+
+	assertEq("slice", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestReduceFnWithNilF(t *testing.T) {
+	want := 0
+	have := ReduceFn[int](New(1, 2, 3))(nil)
+
+	assertEq("slice", want, have, func(s string) { t.Fatal(s) })
+}
