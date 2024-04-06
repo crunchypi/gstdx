@@ -96,3 +96,13 @@ func ReduceFn[T any, S ~[]T](s S) func(reducer func(acc, curr T) T) T {
 		return r
 	}
 }
+
+// New returns a slice containing a shallow copy of the given slice.
+func IntoClone[T any, S ~[]T](s S) S {
+	r := make([]T, 0, len(s))
+	for _, v := range s {
+		r = append(r, v)
+	}
+
+	return r
+}

@@ -117,3 +117,19 @@ func TestReduceFnWithNilF(t *testing.T) {
 
 	assertEq("slice", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestIntoCloneIdeal(t *testing.T) {
+	s1 := New(1, 2, 3)
+	s2 := IntoClone(s1)
+
+	s1[0] = 0
+
+	assertEq("slice", New(1, 2, 3), s2, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoCloneWithNilS(t *testing.T) {
+	s1 := *new([]int)
+	s2 := IntoClone(s1)
+
+	assertEq("slice", []int{}, s2, func(s string) { t.Fatal(s) })
+}
