@@ -97,7 +97,7 @@ func ReduceFn[T any, S ~[]T](s S) func(reducer func(acc, curr T) T) T {
 	}
 }
 
-// New returns a slice containing a shallow copy of the given slice.
+// IntoClone returns a slice containing a shallow copy of the given slice.
 func IntoClone[T any, S ~[]T](s S) S {
 	r := make([]T, 0, len(s))
 	for _, v := range s {
@@ -105,4 +105,37 @@ func IntoClone[T any, S ~[]T](s S) S {
 	}
 
 	return r
+}
+
+// IntoMapKFn returns a func which makes a map[K]V using the given slice "s".
+// Keys in the map are elements in "s", and values are generated using the
+// mapper func 'f', which maps the keys to vals.
+// Example:
+//
+//	m := IntoMapKFn[int, int]([]int{1, 2, 3})(
+//		func(k int) (v int) {
+//			v = k + 1
+//			return
+//		},
+//	)
+//
+//	// m is map[1:2 2:3 3:4]
+func IntoMapKFn[K comparable, V any, S ~[]K](s S) func(f func(K) V) map[K]V {
+	return func(f func(K) V) map[K]V {
+		if len(s) == 0 {
+			return map[K]V{}
+		}
+
+		r := make(map[K]V, len(s))
+		for _, k := range s {
+			var v V
+			if f != nil {
+				v = f(k)
+			}
+
+			r[k] = v
+		}
+
+		return r
+	}
 }

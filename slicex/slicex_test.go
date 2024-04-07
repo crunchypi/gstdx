@@ -3,6 +3,7 @@ package slicex
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"testing"
 )
 
@@ -132,4 +133,45 @@ func TestIntoCloneWithNilS(t *testing.T) {
 	s2 := IntoClone(s1)
 
 	assertEq("slice", []int{}, s2, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoMapKFnIdeal(t *testing.T) {
+	s1 := New(1, 2)
+	sk := New[int]()
+	sv := New[int]()
+
+	m := IntoMapKFn[int, int](s1)(func(v int) int { return v + 1 })
+	for k, v := range m {
+		sk = append(sk, k)
+		sv = append(sv, v)
+	}
+
+	sort.Ints(sk)
+	sort.Ints(sv)
+
+	assertEq("keys", s1, sk, func(s string) { t.Fatal(s) })
+	assertEq("vals", New(2, 3), sv, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoMapKFnWithNilS(t *testing.T) {
+	m := IntoMapKFn[int, int, []int](nil)(func(int) int { return 0 })
+	assertEq("len", 0, len(m), func(s string) { t.Fatal(s) })
+}
+
+func TestIntoMapKFnWithNilF(t *testing.T) {
+	s1 := New(1, 2)
+	sk := New[int]()
+	sv := New[int]()
+
+	m := IntoMapKFn[int, int](s1)(nil)
+	for k, v := range m {
+		sk = append(sk, k)
+		sv = append(sv, v)
+	}
+
+	sort.Ints(sk)
+	sort.Ints(sv)
+
+	assertEq("keys", s1, sk, func(s string) { t.Fatal(s) })
+	assertEq("vals", New(0, 0), sv, func(s string) { t.Fatal(s) })
 }
