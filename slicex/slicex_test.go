@@ -175,3 +175,44 @@ func TestIntoMapKFnWithNilF(t *testing.T) {
 	assertEq("keys", s1, sk, func(s string) { t.Fatal(s) })
 	assertEq("vals", New(0, 0), sv, func(s string) { t.Fatal(s) })
 }
+
+func TestIntoMapVFnIdeal(t *testing.T) {
+	s1 := New(1, 2)
+	sk := New[int]()
+	sv := New[int]()
+
+	m := IntoMapVFn[int, int](s1)(func(v int) int { return v + 1 })
+	for k, v := range m {
+		sk = append(sk, k)
+		sv = append(sv, v)
+	}
+
+	sort.Ints(sk)
+	sort.Ints(sv)
+
+	assertEq("vals", s1, sv, func(s string) { t.Fatal(s) })
+	assertEq("keys", New(2, 3), sk, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoMapVFnWithNilS(t *testing.T) {
+	m := IntoMapVFn[int, int, []int](nil)(func(int) int { return 0 })
+	assertEq("len", 0, len(m), func(s string) { t.Fatal(s) })
+}
+
+func TestIntoMapVFnWithNilF(t *testing.T) {
+	s1 := New(1, 2)
+	sk := New[int]()
+	sv := New[int]()
+
+	m := IntoMapVFn[int, int](s1)(nil)
+	for k, v := range m {
+		sk = append(sk, k)
+		sv = append(sv, v)
+	}
+
+	sort.Ints(sk)
+	sort.Ints(sv)
+
+	assertEq("vals", New(2), sv, func(s string) { t.Fatal(s) })
+	assertEq("keys", New(0), sk, func(s string) { t.Fatal(s) })
+}

@@ -139,3 +139,36 @@ func IntoMapKFn[K comparable, V any, S ~[]K](s S) func(f func(K) V) map[K]V {
 		return r
 	}
 }
+
+// IntoMapVFn returns a func which makes a map[K]V using the given slice "s".
+// Vals in the map are elements in "s", and their associated keys are generated
+// using the mapper func "f".
+// Example:
+//
+//	m := IntoMapVFn[int, int]([]int{1, 2, 3})(
+//		func(v int) (k int) {
+//			k = v + 1
+//			return
+//		},
+//	)
+//
+//	// m is map[2:1 3:2 4:3]
+func IntoMapVFn[K comparable, V any, S ~[]V](s S) func(f func(V) K) map[K]V {
+	return func(f func(V) K) map[K]V {
+		if len(s) == 0 {
+			return map[K]V{}
+		}
+
+		r := make(map[K]V, len(s))
+		for _, v := range s {
+			var k K
+			if f != nil {
+				k = f(v)
+			}
+
+			r[k] = v
+		}
+
+		return r
+	}
+}
