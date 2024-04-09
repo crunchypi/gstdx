@@ -172,3 +172,33 @@ func IntoMapVFn[K comparable, V any, S ~[]V](s S) func(f func(V) K) map[K]V {
 		return r
 	}
 }
+
+// IntoChan returns a chan which is fed the contents of "s" from a new goroutine.
+// There is no internal copying of "s", so its use should stop after calling this
+// func. On empty or nil "s", the chan is returned pre-closed.
+// Example:
+//
+//	s := make([]int, 0, 3)
+//	for v := range IntoChan([]int{1, 2, 3}) {
+//		s = append(s, v)
+//	}
+//
+//	// s is []int{1, 2, 3}
+func IntoChan[T any, S ~[]T](s S) <-chan T {
+	if len(s) == 0 {
+		r := make(chan T)
+		close(r)
+		return r
+	}
+
+	r := make(chan T)
+	go func() {
+		defer close(r)
+
+		for _, v := range s {
+			r <- v
+		}
+	}()
+
+	return r
+}

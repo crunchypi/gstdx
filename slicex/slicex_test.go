@@ -1,10 +1,12 @@
 package slicex
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
 	"testing"
+	"time"
 )
 
 func assertEq[T any](subject string, a T, b T, f func(string)) {
@@ -215,4 +217,46 @@ func TestIntoMapVFnWithNilF(t *testing.T) {
 
 	assertEq("vals", New(2), sv, func(s string) { t.Fatal(s) })
 	assertEq("keys", New(0), sk, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoChanIdeal(t *testing.T) {
+	want := New(1, 2, 3)
+	have := New[int]()
+
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	go func() {
+		defer ctxCancel()
+		for v := range IntoChan(want) {
+			have = append(have, v)
+		}
+	}()
+
+	select {
+	case <-time.After(time.Second * 2):
+		t.Fatal("test hung")
+	case <-ctx.Done():
+	}
+
+	assertEq("slice", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoChanWithNilS(t *testing.T) {
+	want := New[int]()
+	have := []int{}
+
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	go func() {
+		defer ctxCancel()
+		for v := range IntoChan[int, []int](nil) {
+			have = append(have, v)
+		}
+	}()
+
+	select {
+	case <-time.After(time.Second * 2):
+		t.Fatal("test hung")
+	case <-ctx.Done():
+	}
+
+	assertEq("slice", want, have, func(s string) { t.Fatal(s) })
 }
