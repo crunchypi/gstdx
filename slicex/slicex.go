@@ -202,3 +202,35 @@ func IntoChan[T any, S ~[]T](s S) <-chan T {
 
 	return r
 }
+
+// IntoGenerator returns a func which, when called, yields values from 's'.
+// If the bool is false, then the iteration is completed and the value is a
+// default T. There is no copying of 's', so there should be no further use
+// of 's' when it is given to this func.
+// Example:
+//
+//	s := make([]int, 0, 3)
+//	g := IntoGenerator([]int{1, 2, 3})
+//
+//	for v, ok := g(); ok; v, ok = g() {
+//		s = append(s, v)
+//	}
+//
+//	// s is []int{1, 2, 3}
+func IntoGenerator[T any, S ~[]T](s S) func() (v T, ok bool) {
+	if len(s) == 0 {
+		return func() (v T, ok bool) { return }
+	}
+
+	i := 0
+	return func() (v T, ok bool) {
+		if i >= len(s) {
+			return
+		}
+
+		v = s[i]
+		ok = true
+		i++
+		return
+	}
+}

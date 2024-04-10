@@ -260,3 +260,20 @@ func TestIntoChanWithNilS(t *testing.T) {
 
 	assertEq("slice", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestIntoGeneratorIdeal(t *testing.T) {
+	want := New(1, 2, 3)
+	have := New[int]()
+
+	gen := IntoGenerator(want)
+	for v, ok := gen(); ok; v, ok = gen() {
+		have = append(have, v)
+	}
+
+	assertEq("slice", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoGeneratorWithNilS(t *testing.T) {
+	_, ok := IntoGenerator[int, []int](nil)()
+	assertEq("cont", false, ok, func(s string) { t.Fatal(s) })
+}
