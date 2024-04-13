@@ -55,3 +55,27 @@ func TestFilterFnWithNilF(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestFilterKFnIdeal(t *testing.T) {
+	init := map[int]int{1: 2, 2: 3}
+	have := FilterKFn(init)(func(k int) bool { return k > 1 })
+	want := map[int]int{2: 3}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestFilterKFnWithNilM(t *testing.T) {
+	init := *new(map[int]int)
+	have := FilterKFn(init)(func(k int) bool { return k > 1 })
+	want := map[int]int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestFilterKFnWithNilF(t *testing.T) {
+	init := map[int]int{1: 2, 2: 3}
+	have := FilterKFn(init)(nil)
+	want := map[int]int{1: 2, 2: 3}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}

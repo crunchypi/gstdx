@@ -54,3 +54,24 @@ func FilterFn[K Key, V Val, M ~map[K]V](m M) func(rcv func(Pair[K, V]) bool) M {
 		return r
 	}
 }
+
+// FilterKFn returns a func which filters 'm' using a given filter func,
+// which bases evaluation on keys.
+// Example:
+//
+//	m := FilterKFn(map[int]int{1: 1, 2: 2, 3: 3})(
+//		func(k int) bool {
+//			return k > 1
+//		},
+//	)
+//
+//	// m is map[int]int{2:2, 3:3}
+func FilterKFn[K Key, V Val, M ~map[K]V](m M) func(rcv func(K) bool) M {
+	return func(f func(K) bool) M {
+		return FilterFn(m)(
+			func(pair Pair[K, V]) bool {
+				return f == nil || f(pair.K)
+			},
+		)
+	}
+}
