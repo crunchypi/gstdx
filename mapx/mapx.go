@@ -96,3 +96,36 @@ func FilterVFn[K Key, V Val, M ~map[K]V](m M) func(rcv func(V) bool) M {
 		)
 	}
 }
+
+// MapFn returns a func which maps 'm' using a given mapper func.
+// Example:
+//
+//	m := MapFn[int, int, int, int](map[int]int{1: 2, 3: 4})(
+//		func(p Pair[int, int]) Pair[int, int] {
+//			p.K++
+//			p.V++
+//			return p
+//		},
+//	)
+//
+//	// m is map[int]int{2:3, 4:5}
+func MapFn[K1 Key, V1 Val, K2 Key, V2 Val](
+	m map[K1]V1,
+) (
+	f func(f func(Pair[K1, V1]) Pair[K2, V2]) map[K2]V2,
+) {
+	return func(f func(Pair[K1, V1]) Pair[K2, V2]) map[K2]V2 {
+		if len(m) == 0 || f == nil {
+			return map[K2]V2{}
+		}
+
+		r := make(map[K2]V2, len(m))
+		for k1, v1 := range m {
+			p1 := Pair[K1, V1]{K: k1, V: v1}
+			p2 := f(p1)
+			r[p2.K] = p2.V
+		}
+
+		return r
+	}
+}

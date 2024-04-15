@@ -103,3 +103,29 @@ func TestFilterVFnWithNilF(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestMapFnIdeal(t *testing.T) {
+	init := map[int]int{1: 2, 2: 3}
+	conv := func(p Pair[int, int]) Pair[int, int] { p.K++; p.V++; return p }
+	have := MapFn[int, int, int, int](init)(conv)
+	want := map[int]int{2: 3, 3: 4}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestMapFnWithNilM(t *testing.T) {
+	init := *new(map[int]int)
+	conv := func(p Pair[int, int]) Pair[int, int] { p.K++; p.V++; return p }
+	have := MapFn[int, int, int, int](init)(conv)
+	want := map[int]int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestMapFnWithNilF(t *testing.T) {
+	init := map[int]int{1: 2, 2: 3}
+	have := MapFn[int, int, int, int](init)(nil)
+	want := map[int]int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
