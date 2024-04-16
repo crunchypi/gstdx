@@ -129,3 +129,28 @@ func MapFn[K1 Key, V1 Val, K2 Key, V2 Val](
 		return r
 	}
 }
+
+// MapKFn returns a func which maps 'm' using the given filter func,
+// which bases conversion on keys.
+// Example:
+//
+//	m := MapKFn[int, int](map[int]int{1: 2, 2: 3})(
+//		func(k int) int {
+//			return k + 1
+//		},
+//	)
+//
+//	// m is map[int]int{2:2, 3:3}
+func MapKFn[KI, KO Key, V Val](m map[KI]V) func(f func(KI) KO) map[KO]V {
+	return func(f func(KI) KO) map[KO]V {
+		if f == nil {
+			return map[KO]V{}
+		}
+
+		return MapFn[KI, V, KO, V](m)(
+			func(p Pair[KI, V]) Pair[KO, V] {
+				return Pair[KO, V]{K: f(p.K), V: p.V}
+			},
+		)
+	}
+}
