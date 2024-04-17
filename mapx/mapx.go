@@ -154,3 +154,28 @@ func MapKFn[KI, KO Key, V Val](m map[KI]V) func(f func(KI) KO) map[KO]V {
 		)
 	}
 }
+
+// MapVFn returns a func which maps 'm' using the given map func, which bases
+// conversion on map values.
+// Example:
+//
+//	m := MapVFn[int, int, int](map[int]int{1: 1, 2: 2})(
+//		func(k int) int {
+//			return k + 1
+//		},
+//	)
+//
+//	// m is map[int]int{1:2, 2:3}
+func MapVFn[K Key, VI, VO Val](m map[K]VI) func(f func(VI) VO) map[K]VO {
+	return func(f func(VI) VO) map[K]VO {
+		if f == nil {
+			return map[K]VO{}
+		}
+
+		return MapFn[K, VI, K, VO](m)(
+			func(p Pair[K, VI]) Pair[K, VO] {
+				return Pair[K, VO]{K: p.K, V: f(p.V)}
+			},
+		)
+	}
+}
