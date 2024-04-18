@@ -177,3 +177,33 @@ func TestMapVFnWithNilF(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestReduceFnIdeal(t *testing.T) {
+	type P = Pair[int, int]
+
+	init := map[int]int{1: 2, 2: 3}
+	have := ReduceFn(init)(func(a, c P) P { a.K += c.K; a.V += c.V; return a })
+	want := P{3, 5}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestReduceFnWithNilM(t *testing.T) {
+	type P = Pair[int, int]
+
+	init := *new(map[int]int)
+	have := ReduceFn(init)(func(a, c P) P { a.K += c.K; a.V += c.V; return a })
+	want := P{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestReduceFnWithNilF(t *testing.T) {
+	type P = Pair[int, int]
+
+	init := map[int]int{1: 2, 2: 3}
+	have := ReduceFn(init)(nil)
+	want := P{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}

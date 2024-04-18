@@ -179,3 +179,29 @@ func MapVFn[K Key, VI, VO Val](m map[K]VI) func(f func(VI) VO) map[K]VO {
 		)
 	}
 }
+
+// ReduceFn returns a func which reduces 'm' using the given reducer.
+// Example:
+//
+//	m := ReduceFn(map[int]int{1: 2, 2: 3})(
+//		func(a, c Pair[int, int]) Pair[int, int] {
+//			a.K += c.K
+//			a.V += c.V
+//			return a
+//		},
+//	)
+//
+//	// m is Pair[int, int]{3, 5}
+func ReduceFn[K Key, V Val, M ~map[K]V, P Pair[K, V]](m M) func(f func(P, P) P) P {
+	return func(f func(acc P, curr P) P) (r P) {
+		if f == nil {
+			return
+		}
+
+		for k, v := range m {
+			r = f(r, P{K: k, V: v})
+		}
+
+		return r
+	}
+}
