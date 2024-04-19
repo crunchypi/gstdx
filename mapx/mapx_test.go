@@ -207,3 +207,27 @@ func TestReduceFnWithNilF(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestReduceKFnIdeal(t *testing.T) {
+	init := map[int]int{1: 2, 2: 3}
+	have := ReduceKFn(init)(func(c, a int) int { return c + a })
+	want := 3
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestReduceKFnWithNilM(t *testing.T) {
+	init := *new(map[int]int)
+	have := ReduceKFn(init)(func(c, a int) int { return c + a })
+	want := 0
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestReduceKFnWithNilF(t *testing.T) {
+	init := map[int]int{1: 2, 2: 3}
+	have := ReduceKFn(init)(nil)
+	want := 0
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
