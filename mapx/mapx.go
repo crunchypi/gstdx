@@ -230,3 +230,28 @@ func ReduceKFn[K Key, V Val](m map[K]V) func(f func(K, K) K) K {
 		).K
 	}
 }
+
+// ReduceVFn returns a func which reduces 'm' into values using the given reducer,
+// which operates on values.
+// Example:
+//
+//	v := ReduceVFn(map[int]int{1: 1, 2: 2})(
+//		func(accum, curr int) int {
+//			return accum + curr
+//		},
+//	)
+//
+//	// v is 3.
+func ReduceVFn[K Key, V Val](m map[K]V) func(f func(V, V) V) V {
+	return func(f func(V, V) V) (v V) {
+		if f == nil {
+			return
+		}
+
+		return ReduceFn(m)(
+			func(acc, curr Pair[K, V]) Pair[K, V] {
+				return Pair[K, V]{V: f(acc.V, curr.V)}
+			},
+		).V
+	}
+}
