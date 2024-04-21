@@ -255,3 +255,19 @@ func TestReduceVFnWithNilF(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestIntoCloneIdeal(t *testing.T) {
+	init := map[int]int{1: 1, 2: 2}
+	have := IntoClone(init)
+	want := map[int]int{1: 1, 2: 2}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoCloneWithNilM(t *testing.T) {
+	init := *new(map[int]int)
+	have := IntoClone(init)
+	want := map[int]int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}

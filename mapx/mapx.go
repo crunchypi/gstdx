@@ -255,3 +255,13 @@ func ReduceVFn[K Key, V Val](m map[K]V) func(f func(V, V) V) V {
 		).V
 	}
 }
+
+// IntoClone returns a shallow copy of the given map.
+func IntoClone[K Key, V Val, M ~map[K]V](m M) M {
+	r := make(M, len(m))
+	for k, v := range m {
+		r[k] = v
+	}
+
+	return r
+}
