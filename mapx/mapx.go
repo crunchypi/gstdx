@@ -265,3 +265,13 @@ func IntoClone[K Key, V Val, M ~map[K]V](m M) M {
 
 	return r
 }
+
+// IntoSlice returns a slice of pairs from the given map.
+func IntoSlice[K Key, V Val, M ~map[K]V](m M) []Pair[K, V] {
+	r := make([]Pair[K, V], 0, len(m))
+	for k, v := range m {
+		r = append(r, Pair[K, V]{K: k, V: v})
+	}
+
+	return r
+}

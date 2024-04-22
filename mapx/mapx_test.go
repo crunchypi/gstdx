@@ -271,3 +271,17 @@ func TestIntoCloneWithNilM(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestIntoSliceIdeal(t *testing.T) {
+	have := IntoSlice(map[int]int{1: 1, 2: 2})
+	want := []Pair[int, int]{{K: 1, V: 1}, {K: 2, V: 2}}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoSliceWithNilM(t *testing.T) {
+	have := IntoSlice(*new(map[int]int))
+	want := []Pair[int, int]{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
