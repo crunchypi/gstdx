@@ -285,3 +285,17 @@ func TestIntoSliceWithNilM(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestIntoSliceKIdeal(t *testing.T) {
+	have := IntoSliceK(map[int]int{1: 1, 2: 2})
+	want := []int{1, 2}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoSliceKWithNilM(t *testing.T) {
+	have := IntoSliceK(*new(map[int]int))
+	want := []int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
