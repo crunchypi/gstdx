@@ -285,3 +285,13 @@ func IntoSliceK[K Key, V Val, M ~map[K]V](m M) []K {
 
 	return r
 }
+
+// IntoSliceV returns a slice of vals from the given map.
+func IntoSliceV[K Key, V Val, M ~map[K]V](m M) []V {
+	r := make([]V, 0, len(m))
+	for _, v := range m {
+		r = append(r, v)
+	}
+
+	return r
+}
