@@ -295,3 +295,18 @@ func IntoSliceV[K Key, V Val, M ~map[K]V](m M) []V {
 
 	return r
 }
+
+// IntoChan returns a chan of pairs from the given map. Items are fed into the
+// chan from a new goroutine so any use of 'm' should stop after this call.
+func IntoChan[K Key, V Val, M ~map[K]V](m M) <-chan Pair[K, V] {
+	ch := make(chan Pair[K, V])
+	go func() {
+		defer close(ch)
+
+		for k, v := range m {
+			ch <- Pair[K, V]{K: k, V: v}
+		}
+	}()
+
+	return ch
+}

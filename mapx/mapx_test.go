@@ -25,6 +25,15 @@ func assertEq[T any](subject string, a T, b T, f func(string)) {
 	f(fmt.Sprintf(s, subject, as, bs))
 }
 
+func sliceFromChan[T any](c <-chan T) []T {
+	s := make([]T, 0, 8)
+	for v := range c {
+		s = append(s, v)
+	}
+
+	return s
+}
+
 func TestNewIdeal(t *testing.T) {
 	p1 := Pair[int, int]{1, 2}
 	p2 := Pair[int, int]{2, 3}
@@ -310,6 +319,22 @@ func TestIntoSliceVIdeal(t *testing.T) {
 func TestIntoSliceVWithNilM(t *testing.T) {
 	have := IntoSliceV(*new(map[int]int))
 	want := []int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoChanIdeal(t *testing.T) {
+	init := map[int]int{1: 2, 2: 3}
+	have := sliceFromChan(IntoChan(init))
+	want := []Pair[int, int]{{K: 1, V: 2}, {K: 2, V: 3}}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoChanWithNilM(t *testing.T) {
+	init := *new(map[int]int)
+	have := sliceFromChan(IntoChan(init))
+	want := []Pair[int, int]{}
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
