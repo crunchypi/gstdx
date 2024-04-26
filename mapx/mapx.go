@@ -310,3 +310,18 @@ func IntoChan[K Key, V Val, M ~map[K]V](m M) <-chan Pair[K, V] {
 
 	return ch
 }
+
+// IntoChanK returns a chan of keys from the given map. Keys are fed into the
+// chan from a new goroutine so any use of 'm' should stop after this call.
+func IntoChanK[K Key, V Val, M ~map[K]V](m M) <-chan K {
+	ch := make(chan K)
+	go func() {
+		defer close(ch)
+
+		for k := range m {
+			ch <- k
+		}
+	}()
+
+	return ch
+}

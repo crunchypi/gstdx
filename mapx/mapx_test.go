@@ -338,3 +338,19 @@ func TestIntoChanWithNilM(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestIntoChanKIdeal(t *testing.T) {
+	init := map[int]int{1: 2, 2: 3}
+	have := sliceFromChan(IntoChanK(init))
+	want := []int{1, 2}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoChanKWithNilM(t *testing.T) {
+	init := *new(map[int]int)
+	have := sliceFromChan(IntoChanK(init))
+	want := []int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
