@@ -354,3 +354,19 @@ func TestIntoChanKWithNilM(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestIntoChanVIdeal(t *testing.T) {
+	init := map[int]int{1: 2, 2: 3}
+	have := sliceFromChan(IntoChanV(init))
+	want := []int{2, 3}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoChanVWithNilM(t *testing.T) {
+	init := *new(map[int]int)
+	have := sliceFromChan(IntoChanV(init))
+	want := []int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
