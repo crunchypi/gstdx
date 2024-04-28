@@ -340,3 +340,23 @@ func IntoChanV[K Key, V Val, M ~map[K]V](m M) <-chan V {
 
 	return ch
 }
+
+// IntoGenerator returns a generator yielding pairs from 'm'.
+// Note that currently this creates a copy of all keys of 'm'.
+func IntoGenerator[K Key, V Val, M ~map[K]V](m M) func() (Pair[K, V], bool) {
+	s := IntoSliceK(m)
+	i := 0
+
+	return func() (p Pair[K, V], ok bool) {
+		if i >= len(s) || len(m) == 0 {
+			return
+		}
+
+		p.K = s[i]
+		p.V = m[p.K]
+
+		ok = true
+		i++
+		return
+	}
+}

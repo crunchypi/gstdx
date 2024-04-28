@@ -34,6 +34,15 @@ func sliceFromChan[T any](c <-chan T) []T {
 	return s
 }
 
+func sliceFromGenerator[T any](g func() (T, bool)) []T {
+	s := make([]T, 0, 8)
+	for v, ok := g(); ok; v, ok = g() {
+		s = append(s, v)
+	}
+
+	return s
+}
+
 func TestNewIdeal(t *testing.T) {
 	p1 := Pair[int, int]{1, 2}
 	p2 := Pair[int, int]{2, 3}
@@ -367,6 +376,22 @@ func TestIntoChanVWithNilM(t *testing.T) {
 	init := *new(map[int]int)
 	have := sliceFromChan(IntoChanV(init))
 	want := []int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoGeneratorIdeal(t *testing.T) {
+	init := map[int]int{1: 2, 2: 3}
+	have := sliceFromGenerator(IntoGenerator(init))
+	want := []Pair[int, int]{{K: 1, V: 2}, {K: 2, V: 3}}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoGeneratorWithNilM(t *testing.T) {
+	init := *new(map[int]int)
+	have := sliceFromGenerator(IntoGenerator(init))
+	want := []Pair[int, int]{}
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
