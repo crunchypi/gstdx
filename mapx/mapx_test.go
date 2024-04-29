@@ -395,3 +395,19 @@ func TestIntoGeneratorWithNilM(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestIntoGeneratorKIdeal(t *testing.T) {
+	init := map[int]int{1: 2, 2: 3}
+	have := sliceFromGenerator(IntoGeneratorK(init))
+	want := []int{1, 2}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoGeneratorKWithNilM(t *testing.T) {
+	init := *new(map[int]int)
+	have := sliceFromGenerator(IntoGeneratorK(init))
+	want := []int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}

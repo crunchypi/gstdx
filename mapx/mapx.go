@@ -360,3 +360,14 @@ func IntoGenerator[K Key, V Val, M ~map[K]V](m M) func() (Pair[K, V], bool) {
 		return
 	}
 }
+
+// IntoGeneratorK returns a generator yielding keys from 'm'.
+// Note that currently this creates a copy of all keys of 'm'.
+func IntoGeneratorK[K Key, V Val, M ~map[K]V](m M) func() (K, bool) {
+	g := IntoGenerator(m)
+
+	return func() (k K, ok bool) {
+		p, ok := g()
+		return p.K, ok
+	}
+}
