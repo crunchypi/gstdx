@@ -371,3 +371,13 @@ func IntoGeneratorK[K Key, V Val, M ~map[K]V](m M) func() (K, bool) {
 		return p.K, ok
 	}
 }
+
+// IntoGeneratorV returns a generator yielding vals from 'm'.
+// Note that currently this creates a copy of all keys of 'm'.
+func IntoGeneratorV[K Key, V Val, M ~map[K]V](m M) func() (V, bool) {
+	g := IntoGenerator(m)
+	return func() (v V, ok bool) {
+		p, ok := g()
+		return p.V, ok
+	}
+}

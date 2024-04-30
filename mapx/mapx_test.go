@@ -3,6 +3,7 @@ package mapx
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"testing"
 )
 
@@ -294,6 +295,9 @@ func TestIntoSliceIdeal(t *testing.T) {
 	have := IntoSlice(map[int]int{1: 1, 2: 2})
 	want := []Pair[int, int]{{K: 1, V: 1}, {K: 2, V: 2}}
 
+	slices.SortFunc(want, func(a, b Pair[int, int]) int { return a.K - b.K })
+	slices.SortFunc(have, func(a, b Pair[int, int]) int { return a.K - b.K })
+
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
@@ -307,6 +311,9 @@ func TestIntoSliceWithNilM(t *testing.T) {
 func TestIntoSliceKIdeal(t *testing.T) {
 	have := IntoSliceK(map[int]int{1: 1, 2: 2})
 	want := []int{1, 2}
+
+	slices.Sort(want)
+	slices.Sort(have)
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
@@ -322,6 +329,9 @@ func TestIntoSliceVIdeal(t *testing.T) {
 	have := IntoSliceV(map[int]int{1: 1, 2: 2})
 	want := []int{1, 2}
 
+	slices.Sort(want)
+	slices.Sort(have)
+
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
@@ -336,6 +346,9 @@ func TestIntoChanIdeal(t *testing.T) {
 	init := map[int]int{1: 2, 2: 3}
 	have := sliceFromChan(IntoChan(init))
 	want := []Pair[int, int]{{K: 1, V: 2}, {K: 2, V: 3}}
+
+	slices.SortFunc(want, func(a, b Pair[int, int]) int { return a.K - b.K })
+	slices.SortFunc(have, func(a, b Pair[int, int]) int { return a.K - b.K })
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
@@ -353,6 +366,9 @@ func TestIntoChanKIdeal(t *testing.T) {
 	have := sliceFromChan(IntoChanK(init))
 	want := []int{1, 2}
 
+	slices.Sort(want)
+	slices.Sort(have)
+
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
@@ -368,6 +384,9 @@ func TestIntoChanVIdeal(t *testing.T) {
 	init := map[int]int{1: 2, 2: 3}
 	have := sliceFromChan(IntoChanV(init))
 	want := []int{2, 3}
+
+	slices.Sort(want)
+	slices.Sort(have)
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
@@ -385,6 +404,9 @@ func TestIntoGeneratorIdeal(t *testing.T) {
 	have := sliceFromGenerator(IntoGenerator(init))
 	want := []Pair[int, int]{{K: 1, V: 2}, {K: 2, V: 3}}
 
+	slices.SortFunc(want, func(a, b Pair[int, int]) int { return a.K - b.K })
+	slices.SortFunc(have, func(a, b Pair[int, int]) int { return a.K - b.K })
+
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
@@ -401,12 +423,34 @@ func TestIntoGeneratorKIdeal(t *testing.T) {
 	have := sliceFromGenerator(IntoGeneratorK(init))
 	want := []int{1, 2}
 
+	slices.Sort(want)
+	slices.Sort(have)
+
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
 
 func TestIntoGeneratorKWithNilM(t *testing.T) {
 	init := *new(map[int]int)
 	have := sliceFromGenerator(IntoGeneratorK(init))
+	want := []int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoGeneratorVIdeal(t *testing.T) {
+	init := map[int]int{1: 2, 2: 3}
+	have := sliceFromGenerator(IntoGeneratorV(init))
+	want := []int{2, 3}
+
+	slices.Sort(want)
+	slices.Sort(have)
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoGeneratorVWithNilM(t *testing.T) {
+	init := *new(map[int]int)
+	have := sliceFromGenerator(IntoGeneratorV(init))
 	want := []int{}
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
