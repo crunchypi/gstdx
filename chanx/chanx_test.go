@@ -47,3 +47,27 @@ func TestNewWithNilS(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestFilterFnIdeal(t *testing.T) {
+	init := New(1, 2, 3)
+	have := sliceFromChan(FilterFn(init)(func(v int) bool { return v%2 != 0 }))
+	want := []int{1, 3}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestFilterFnWithNilC(t *testing.T) {
+	init := *new(chan int)
+	have := sliceFromChan(FilterFn(init)(func(v int) bool { return true }))
+	want := []int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestFilterFnWithNilF(t *testing.T) {
+	init := New(1, 2, 3)
+	have := sliceFromChan(FilterFn(init)(nil))
+	want := []int{1, 2, 3}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
