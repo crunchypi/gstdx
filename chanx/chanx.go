@@ -56,3 +56,33 @@ func FilterFn[T any](ch <-chan T) func(func(T) bool) <-chan T {
 		return r
 	}
 }
+
+// MapFn returns a func which maps 'ch' using the given mapper func, and
+// returns a chan that reads the mapped values from a new goroutine.
+// Example:
+//
+//	ch := MapFn[int, int](New(1, 2, 3))(
+//		func(v int) int {
+//			return v + 1
+//		},
+//	)
+//
+//	// ranging over ch will yield [2, 3, 4]
+func MapFn[T, U any](ch <-chan T) func(func(T) U) <-chan U {
+	return func(f func(T) U) <-chan U {
+		if ch == nil || f == nil {
+			return New[U]()
+		}
+
+		r := make(chan U)
+		go func() {
+			defer close(r)
+
+			for v := range ch {
+				r <- f(v)
+			}
+		}()
+
+		return r
+	}
+}
