@@ -86,3 +86,27 @@ func MapFn[T, U any](ch <-chan T) func(func(T) U) <-chan U {
 		return r
 	}
 }
+
+// ReduceFn returns a func which reduces 'ch' using a given reducer func.
+// Example:
+//
+//	r := ReduceFn(New(1, 2, 3))(
+//		func(acc, curr int) int {
+//			return acc + curr
+//		},
+//	)
+//
+//	// r is 6.
+func ReduceFn[T any](ch <-chan T) func(func(acc, curr T) T) (r T) {
+	return func(f func(acc T, curr T) T) (r T) {
+		if ch == nil || f == nil {
+			return r
+		}
+
+		for v := range ch {
+			r = f(r, v)
+		}
+
+		return r
+	}
+}

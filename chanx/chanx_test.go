@@ -95,3 +95,32 @@ func TestMapFnWithNilF(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestReduceFnIdeal(t *testing.T) {
+	want := 6
+	have := ReduceFn(New(1, 2, 3))(
+		func(acc, curr int) int {
+			return acc + curr
+		},
+	)
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestReduceFnWithNilC(t *testing.T) {
+	want := 0
+	have := ReduceFn(*new(chan int))(
+		func(acc, curr int) int {
+			return acc + curr
+		},
+	)
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestReduceFnWithNilF(t *testing.T) {
+	want := 0
+	have := ReduceFn(New(1, 2, 3))(nil)
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
