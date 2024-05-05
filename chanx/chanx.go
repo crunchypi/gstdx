@@ -110,3 +110,26 @@ func ReduceFn[T any](ch <-chan T) func(func(acc, curr T) T) (r T) {
 		return r
 	}
 }
+
+// IntoSlice reads all values of 'ch' and returns them in a slice with a small
+// initial capacity. The optional 'size' may be specified for a specific cap.
+func IntoSlice[T any](ch <-chan T, size ...int) []T {
+	if ch == nil {
+		return []T{}
+	}
+
+	l := 8
+	if len(size) > 0 {
+		l = 0
+		for _, v := range size {
+			l += v
+		}
+	}
+
+	r := make([]T, 0, l)
+	for v := range ch {
+		r = append(r, v)
+	}
+
+	return r
+}

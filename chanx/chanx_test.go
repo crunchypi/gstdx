@@ -124,3 +124,17 @@ func TestReduceFnWithNilF(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestIntoSliceIdeal(t *testing.T) {
+	want := []int{1, 2, 3}
+	have := IntoSlice(New(want...), 8)
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoSliceWithNilC(t *testing.T) {
+	want := []int{}
+	have := IntoSlice(*new(chan int))
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
