@@ -138,3 +138,27 @@ func TestIntoSliceWithNilC(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestIntoMapKFnIdeal(t *testing.T) {
+	init := New(1, 2, 3)
+	have := IntoMapKFn[int, int](init)(func(k int) int { return k })
+	want := map[int]int{1: 1, 2: 2, 3: 3}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoMapKFnWithNilC(t *testing.T) {
+	init := *new(chan int)
+	have := IntoMapKFn[int, int](init)(func(k int) int { return k })
+	want := map[int]int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoMapKFnWithNilF(t *testing.T) {
+	init := New(1, 2, 3)
+	have := IntoMapKFn[int, int](init)(nil)
+	want := map[int]int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}

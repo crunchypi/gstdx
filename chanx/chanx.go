@@ -133,3 +133,31 @@ func IntoSlice[T any](ch <-chan T, size ...int) []T {
 
 	return r
 }
+
+// IntoMapKFn returns a func which creates a map[K]V using the given chan 'ch'.
+// It does so by reading all elements of 'ch' and storing them as keys. Vals
+// are defined with the given func 'f'.
+// Example:
+//
+//	c := New(1, 2, 3)
+//	m := IntoMapKFn[int, int](c)(
+//		func(k int) int {
+//			return k + 1
+//		},
+//	)
+//
+//	// m is map[int]int{1:2, 2:3, 3:4}
+func IntoMapKFn[K comparable, V any](ch <-chan K) func(f func(K) V) map[K]V {
+	return func(f func(K) V) map[K]V {
+		if ch == nil || f == nil {
+			return map[K]V{}
+		}
+
+		r := make(map[K]V, 8)
+		for k := range ch {
+			r[k] = f(k)
+		}
+
+		return r
+	}
+}
