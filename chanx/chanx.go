@@ -161,3 +161,31 @@ func IntoMapKFn[K comparable, V any](ch <-chan K) func(f func(K) V) map[K]V {
 		return r
 	}
 }
+
+// IntoMapVFn returns a func which creates a map[K]V using the given chan 'ch'.
+// It does so by reading all elements of 'ch' and storing them as values for
+// keys that are defined using the given func 'f'.
+// Example:
+//
+//	c := New(1, 2, 3)
+//	m := IntoMapVFn[int, int](c)(
+//		func(v int) int {
+//			return v + 1
+//		},
+//	)
+//
+//	// m is map[int]int{2:1, 3:2, 4:3}
+func IntoMapVFn[K comparable, V any](ch <-chan V) func(f func(V) K) map[K]V {
+	return func(f func(V) K) map[K]V {
+		if ch == nil || f == nil {
+			return map[K]V{}
+		}
+
+		r := make(map[K]V, 8)
+		for v := range ch {
+			r[f(v)] = v
+		}
+
+		return r
+	}
+}
