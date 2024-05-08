@@ -189,3 +189,15 @@ func IntoMapVFn[K comparable, V any](ch <-chan V) func(f func(V) K) map[K]V {
 		return r
 	}
 }
+
+// IntoGenerator returns a generator which reads from the given chan.
+func IntoGenerator[T any](ch <-chan T) func() (v T, cont bool) {
+	if ch == nil {
+		return func() (v T, cont bool) { return }
+	}
+
+	return func() (v T, cont bool) {
+		v, cont = <-ch
+		return v, cont
+	}
+}
