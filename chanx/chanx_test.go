@@ -3,6 +3,7 @@ package chanx
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"testing"
 )
 
@@ -83,8 +84,11 @@ func TestFilterFnWithNilF(t *testing.T) {
 
 func TestMapFnIdeal(t *testing.T) {
 	init := New(1, 2, 3)
-	have := sliceFromChan(MapFn[int, int](init)(func(v int) int { return v + 1 }))
+	have := sliceFromChan(MapFn[int, int](init, 2)(func(v int) int { return v + 1 }))
 	want := []int{2, 3, 4}
+
+	slices.Sort(have)
+	slices.Sort(want)
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }

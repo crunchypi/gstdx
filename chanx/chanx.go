@@ -1,5 +1,7 @@
 package chanx
 
+import "sync"
+
 // New returns a read-only chan which receives the values given as args here.
 // Values are pushed through the chan using a new goroutine.
 func New[T any](vs ...T) <-chan T {
@@ -59,6 +61,11 @@ func FilterFn[T any](ch <-chan T) func(func(T) bool) <-chan T {
 
 // MapFn returns a func which maps 'ch' using the given mapper func, and
 // returns a chan that reads the mapped values from a new goroutine.
+//
+// If used, the sum of 'n' will determine the number of new goroutines,
+// converting this task into a workpool. At that point, the order of
+// elements coming from the returned chan may not be predictable.
+//
 // Example:
 //
 //	ch := MapFn[int, int](New(1, 2, 3))(
@@ -68,22 +75,40 @@ func FilterFn[T any](ch <-chan T) func(func(T) bool) <-chan T {
 //	)
 //
 //	// ranging over ch will yield [2, 3, 4]
-func MapFn[T, U any](ch <-chan T) func(func(T) U) <-chan U {
+func MapFn[T, U any](ch <-chan T, n ...int) func(func(T) U) <-chan U {
 	return func(f func(T) U) <-chan U {
 		if ch == nil || f == nil {
 			return New[U]()
 		}
 
-		r := make(chan U)
-		go func() {
-			defer close(r)
-
-			for v := range ch {
-				r <- f(v)
+		nw := 1
+		if len(n) > 0 {
+			nw = 0
+			for _, v := range n {
+				nw += v
 			}
+		}
+
+		wg := sync.WaitGroup{}
+		wg.Add(nw)
+
+		rc := make(chan U)
+		for i := 0; i < nw; i++ {
+			go func() {
+				defer wg.Done()
+
+				for v := range ch {
+					rc <- f(v)
+				}
+			}()
+		}
+
+		go func() {
+			wg.Wait()
+			close(rc)
 		}()
 
-		return r
+		return rc
 	}
 }
 
