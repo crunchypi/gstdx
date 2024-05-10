@@ -25,6 +25,11 @@ func New[T any](vs ...T) <-chan T {
 
 // FilterFn returns a func which filters 'ch' using a given filter func, and
 // returns a chan that reads the remaining values from a new goroutine.
+//
+// If used, the sum of 'n' will determine the number of new goroutines,
+// converting this task into a workpool. At that point, the order of
+// elements coming from the returned chan may not be predictable.
+//
 // Example:
 //
 //	ch := FilterFn(New(1,2,3))(
@@ -34,7 +39,7 @@ func New[T any](vs ...T) <-chan T {
 //	)
 //
 //	// ranging over ch will yield [2,3]
-func FilterFn[T any](ch <-chan T) func(func(T) bool) <-chan T {
+func FilterFn[T any](ch <-chan T, n ...int) func(func(T) bool) <-chan T {
 	return func(f func(T) bool) <-chan T {
 		if ch == nil {
 			return New[T]()
@@ -44,18 +49,36 @@ func FilterFn[T any](ch <-chan T) func(func(T) bool) <-chan T {
 			return ch
 		}
 
-		r := make(chan T)
-		go func() {
-			defer close(r)
-
-			for v := range ch {
-				if f(v) {
-					r <- v
-				}
+		nw := 1
+		if len(n) > 0 {
+			nw = 0
+			for _, v := range n {
+				nw += v
 			}
+		}
+
+		wg := sync.WaitGroup{}
+		wg.Add(nw)
+
+		rc := make(chan T)
+		for i := 0; i < nw; i++ {
+			go func() {
+				defer wg.Done()
+
+				for v := range ch {
+					if f(v) {
+						rc <- v
+					}
+				}
+			}()
+		}
+
+		go func() {
+			wg.Wait()
+			close(rc)
 		}()
 
-		return r
+		return rc
 	}
 }
 

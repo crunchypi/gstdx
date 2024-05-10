@@ -60,8 +60,11 @@ func TestNewWithNilS(t *testing.T) {
 
 func TestFilterFnIdeal(t *testing.T) {
 	init := New(1, 2, 3)
-	have := sliceFromChan(FilterFn(init)(func(v int) bool { return v%2 != 0 }))
+	have := sliceFromChan(FilterFn(init, 3)(func(v int) bool { return v%2 != 0 }))
 	want := []int{1, 3}
+
+	slices.Sort(have)
+	slices.Sort(want)
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
