@@ -1,0 +1,49 @@
+package generator
+
+import (
+	"encoding/json"
+	"fmt"
+	"testing"
+)
+
+func assertEq[T any](subject string, a T, b T, f func(string)) {
+	if f == nil {
+		return
+	}
+
+	ab, _ := json.Marshal(a)
+	bb, _ := json.Marshal(b)
+
+	as := string(ab)
+	bs := string(bb)
+
+	if as == bs {
+		return
+	}
+
+	s := "unexpected '%v':\n\twant: '%v'\n\thave: '%v'\n"
+	f(fmt.Sprintf(s, subject, as, bs))
+}
+
+func sliceFromGenerator[T any](g func() (T, bool)) []T {
+	s := make([]T, 0, 8)
+	for v, ok := g(); ok; v, ok = g() {
+		s = append(s, v)
+	}
+
+	return s
+}
+
+func TestNewWithVals(t *testing.T) {
+	have := sliceFromGenerator(New(1, 2, 3))
+	want := []int{1, 2, 3}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestNewWithNone(t *testing.T) {
+	have := sliceFromGenerator(New[int]())
+	want := []int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
