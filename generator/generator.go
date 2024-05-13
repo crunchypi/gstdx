@@ -51,3 +51,34 @@ func FilterFn[T any](g Gen[T]) func(rcv func(T) bool) Gen[T] {
 		}
 	}
 }
+
+// MapFn returns a func which maps 'g' using a given mapper func 'rcv', and
+// returns the resulting generator.
+// Example:
+//
+//	g := MapFn[int, int](New(1, 2))(
+//		func(v int) int {
+//			return v + 1
+//		},
+//	)
+//
+//	t.Log(g())	// 2, true
+//	t.Log(g())	// 3, true
+//	t.Log(g())	// 0, false
+func MapFn[T, U any](g Gen[T]) func(rcv func(T) U) Gen[U] {
+	return func(f func(T) U) Gen[U] {
+		if g == nil || f == nil {
+			return New[U]()
+		}
+
+		return func() (vu U, cont bool) {
+			vt, cont := g()
+			if !cont {
+				return vu, cont
+			}
+
+			vu = f(vt)
+			return vu, cont
+		}
+	}
+}

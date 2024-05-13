@@ -71,3 +71,27 @@ func TestFilterFnWithNilF(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestMapFnIdeal(t *testing.T) {
+	init := New(1, 2, 3)
+	have := sliceFromGenerator(MapFn[int, int](init)(func(v int) int { return v + 1 }))
+	want := []int{2, 3, 4}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestMapFnWithNilG(t *testing.T) {
+	init := *new(Gen[int])
+	have := sliceFromGenerator(MapFn[int, int](init)(func(v int) int { return v + 1 }))
+	want := []int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestMapFnWithNilF(t *testing.T) {
+	init := New(1, 2, 3)
+	have := sliceFromGenerator(MapFn[int, int](init)(nil))
+	want := []int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
