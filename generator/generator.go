@@ -82,3 +82,28 @@ func MapFn[T, U any](g Gen[T]) func(rcv func(T) U) Gen[U] {
 		}
 	}
 }
+
+// ReduceFn returns a func which reduces 'g' using a given reducer func, and
+// returns the resulting value.
+// Example:
+//
+//	r := ReduceFn(New(1, 2, 3))(
+//		func(accumulator, current int) int {
+//			return accumulator + current
+//		},
+//	)
+//
+//	t.Log(r)	// 6.
+func ReduceFn[T any](g Gen[T]) func(rcv func(T, T) T) T {
+	return func(f func(acc T, curr T) T) (r T) {
+		if g == nil || f == nil {
+			return r
+		}
+
+		for v, cont := g(); cont; v, cont = g() {
+			r = f(r, v)
+		}
+
+		return r
+	}
+}
