@@ -107,3 +107,26 @@ func ReduceFn[T any](g Gen[T]) func(rcv func(T, T) T) T {
 		return r
 	}
 }
+
+// IntoSlice reads all values of 'g' and returns them in a slice with a small
+// initial capacity. The optional 'size' may be specified for a specific cap.
+func IntoSlice[T any](g Gen[T], size ...int) []T {
+	if g == nil {
+		return []T{}
+	}
+
+	c := 8
+	if len(size) > 0 {
+		c = 0
+		for _, v := range size {
+			c += v
+		}
+	}
+
+	r := make([]T, 0, c)
+	for v, cont := g(); cont; v, cont = g() {
+		r = append(r, v)
+	}
+
+	return r
+}
