@@ -130,3 +130,31 @@ func IntoSlice[T any](g Gen[T], size ...int) []T {
 
 	return r
 }
+
+// IntoMapKFn returns a func which creates a map[K]V using the given generator.
+// It does so by reading all values of 'g' and storing them as keys. Vals are
+// defined using the given func 'f'.
+// Example:
+//
+//	m := IntoMapKFn[int, int](New(1, 2, 3))(
+//		func(key int) (val int) {
+//			val = key + 1
+//			return val
+//		},
+//	)
+//
+//	t.Log(m)	// map[1:2 2:3 3:4]
+func IntoMapKFn[K comparable, V any](g Gen[K]) func(func(K) V) map[K]V {
+	return func(f func(K) V) map[K]V {
+		if g == nil || f == nil {
+			return map[K]V{}
+		}
+
+		r := make(map[K]V)
+		for k, cont := g(); cont; k, cont = g() {
+			r[k] = f(k)
+		}
+
+		return r
+	}
+}
