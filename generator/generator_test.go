@@ -154,3 +154,27 @@ func TestIntoMapKFnWithNilF(t *testing.T) {
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestIntoMapVFnIdeal(t *testing.T) {
+	init := New(1, 2, 3)
+	have := IntoMapVFn[int](init)(func(v int) int { return v - 1 })
+	want := map[int]int{0: 1, 1: 2, 2: 3}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoMapVFnWithNilG(t *testing.T) {
+	init := *new(Gen[int])
+	have := IntoMapVFn[int](init)(func(v int) int { return v - 1 })
+	want := map[int]int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoMapVFnWithNilF(t *testing.T) {
+	init := New(1, 2, 3)
+	have := IntoMapVFn[int](init)(nil)
+	want := map[int]int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}

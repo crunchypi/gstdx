@@ -158,3 +158,31 @@ func IntoMapKFn[K comparable, V any](g Gen[K]) func(func(K) V) map[K]V {
 		return r
 	}
 }
+
+// IntoMapVFn returns a func which creates a map[K]V using the given generator.
+// It does so by reading all values of 'g' and storing them as values for keys
+// that are defined using the given func 'f'.
+// Example:
+//
+//	m := IntoMapVFn[int](New(1, 2, 3))(
+//		func(val int) (key int) {
+//			key = val - 1
+//			return key
+//		},
+//	)
+//
+//	t.Log(m)	// map[0:1 1:2 2:3]
+func IntoMapVFn[K comparable, V any](g Gen[V]) func(func(V) K) map[K]V {
+	return func(f func(V) K) map[K]V {
+		if g == nil || f == nil {
+			return map[K]V{}
+		}
+
+		r := make(map[K]V)
+		for v, cont := g(); cont; v, cont = g() {
+			r[f(v)] = v
+		}
+
+		return r
+	}
+}
