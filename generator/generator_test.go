@@ -34,6 +34,15 @@ func sliceFromGenerator[T any](g func() (T, bool)) []T {
 	return s
 }
 
+func sliceFromChan[T any](c <-chan T) []T {
+	s := make([]T, 0, 8)
+	for v := range c {
+		s = append(s, v)
+	}
+
+	return s
+}
+
 func TestNewWithVals(t *testing.T) {
 	have := sliceFromGenerator(New(1, 2, 3))
 	want := []int{1, 2, 3}
@@ -175,6 +184,22 @@ func TestIntoMapVFnWithNilF(t *testing.T) {
 	init := New(1, 2, 3)
 	have := IntoMapVFn[int](init)(nil)
 	want := map[int]int{}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoChanIdeal(t *testing.T) {
+	init := New(1, 2, 3)
+	have := sliceFromChan(IntoChan(init))
+	want := []int{1, 2, 3}
+
+	assertEq("r", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestIntoChanWithNilG(t *testing.T) {
+	init := *new(Gen[int])
+	have := sliceFromChan(IntoChan(init))
+	want := []int{}
 
 	assertEq("r", want, have, func(s string) { t.Fatal(s) })
 }

@@ -186,3 +186,22 @@ func IntoMapVFn[K comparable, V any](g Gen[V]) func(func(V) K) map[K]V {
 		return r
 	}
 }
+
+// IntoChan returns a chan which reads from the given generator. Values are fed
+// into the chan from a new goroutine so any use of 'g' should stop after this call.
+func IntoChan[T any](g Gen[T]) <-chan T {
+	ch := make(chan T)
+	if g == nil {
+		close(ch)
+		return ch
+	}
+
+	go func() {
+		defer close(ch)
+		for v, cont := g(); cont; v, cont = g() {
+			ch <- v
+		}
+	}()
+
+	return ch
+}
