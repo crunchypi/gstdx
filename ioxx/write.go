@@ -1,12 +1,6 @@
-package iox
+package ioxx
 
-import (
-	"bytes"
-	"context"
-	"encoding/gob"
-	"io"
-)
-
+/*
 // -----------------------------------------------------------------------------
 // New Writer iface + impl.
 // -----------------------------------------------------------------------------
@@ -75,10 +69,10 @@ func (impl WriteCloserImpl[T]) Write(
 }
 
 // -----------------------------------------------------------------------------
-// Factory funcs.
+// Converters.
 // -----------------------------------------------------------------------------
 
-func NewB2VWriterFn[T any](w Writer[T]) func(d Decoder) io.Writer {
+func NewByteWriterFn[T any](w Writer[T]) func(d Decoder) io.Writer {
 	return func(d Decoder) io.Writer {
 		buf := bytes.NewBuffer(nil)
 		var dec Decoder = gob.NewDecoder(buf)
@@ -116,16 +110,16 @@ func NewB2VWriterFn[T any](w Writer[T]) func(d Decoder) io.Writer {
 	}
 }
 
-func NewB2VWriteCloserFn[T any](w WriteCloser[T]) func(d Decoder) io.WriteCloser {
+func NewByteWriteCloserFn[T any](w WriteCloser[T]) func(d Decoder) io.WriteCloser {
 	return func(d Decoder) io.WriteCloser {
 		return readWriteCloserImpl{
 			ImplC: w.Close,
-			ImplW: NewB2VWriterFn[T](w)(d).Write,
+			ImplW: NewByteWriterFn(w)(d).Write,
 		}
 	}
 }
 
-func NewV2BWriterFn[T any](w io.Writer) func(f func(io.Writer) Encoder) Writer[T] {
+func NewValueWriterFn[T any](w io.Writer) func(f encoderFn) Writer[T] {
 	return func(f func(io.Writer) Encoder) Writer[T] {
 		buf := bytes.NewBuffer(nil)
 		enc := func(w io.Writer) Encoder { return gob.NewEncoder(w) }(buf)
@@ -152,53 +146,12 @@ func NewV2BWriterFn[T any](w io.Writer) func(f func(io.Writer) Encoder) Writer[T
 	}
 }
 
-func NewV2BWriteCloserFn[T any](w io.WriteCloser) func(f func(io.Writer) Encoder) WriteCloser[T] {
+func NewValueWriteCloserFn[T any](w io.WriteCloser) func(f encoderFn) WriteCloser[T] {
 	return func(f func(io.Writer) Encoder) WriteCloser[T] {
 		return WriteCloserImpl[T]{
 			ImplC: w.Close,
-			ImplW: NewV2BWriterFn[T](w)(f).Write,
+			ImplW: NewValueWriterFn[T](w)(f).Write,
 		}
 	}
 }
-
-// -----------------------------------------------------------------------------
-// Batching.
-// -----------------------------------------------------------------------------
-
-func NewBatchedVWriter[T any](w Writer[T], size int) Writer[T] {
-	buf := make([]T, 0, size)
-	return WriterImpl[T]{
-		Impl: func(ctx context.Context, v T) (err error) {
-			buf = append(buf, v)
-
-			if len(buf) >= size {
-				for i := 0; i < size; i++ {
-					_v := buf[0]
-					buf = buf[1:]
-					err = w.Write(ctx, _v)
-					if err != nil {
-						return
-					}
-				}
-			}
-
-			return err
-		},
-	}
-}
-
-func NewBatchedSWriter[T any](w Writer[[]T], size int) Writer[T] {
-	buf := make([]T, 0, size)
-	return WriterImpl[T]{
-		Impl: func(ctx context.Context, v T) (err error) {
-			buf = append(buf, v)
-
-			if len(buf) >= size {
-				err = w.Write(ctx, buf)
-				buf = make([]T, 0, size)
-			}
-
-			return err
-		},
-	}
-}
+*/
