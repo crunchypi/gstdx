@@ -63,3 +63,34 @@ func TestDecoderImplDecodeWithNilImpl(t *testing.T) {
 	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
 	assertEq("val", "", val, func(s string) { t.Fatal(s) })
 }
+
+func TestIOReadWriteCloserImplIdeal(t *testing.T) {
+	err := *new(error)
+	rwc := readWriteCloserImpl{}
+	rwc.ImplC = func() error { return nil }
+	rwc.ImplR = func([]byte) (int, error) { return 0, nil }
+	rwc.ImplW = func([]byte) (int, error) { return 0, nil }
+
+	err = rwc.Close()
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+
+	_, err = rwc.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+
+	_, err = rwc.Write(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+}
+
+func TestIOReadWriteCloserImplWithNilImpl(t *testing.T) {
+	err := *new(error)
+	rwc := readWriteCloserImpl{}
+
+	err = rwc.Close()
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+
+	_, err = rwc.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+
+	_, err = rwc.Write(nil)
+	assertEq("err", io.ErrClosedPipe, err, func(s string) { t.Fatal(s) })
+}
