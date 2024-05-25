@@ -1,7 +1,10 @@
 package iox
 
 import (
+	"bytes"
 	"context"
+	"encoding/gob"
+	"encoding/json"
 	"io"
 	"testing"
 )
@@ -53,4 +56,62 @@ func TestReadCloserImplCloseWithoutImpl(t *testing.T) {
 
 	err := rc.Close()
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+}
+
+func TestNewValueReaderFnIdeal(t *testing.T) {
+	b := bytes.NewBuffer(nil)
+	json.NewEncoder(b).Encode("test1")
+	json.NewEncoder(b).Encode("test2")
+
+	f := func(r io.Reader) Decoder { return json.NewDecoder(r) }
+	r := NewValueReaderFn[string](b)(f)
+
+	err := *new(error)
+	val := ""
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test1", val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", "", val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewValueReaderFnWithNilReader(t *testing.T) {
+	r := NewValueReaderFn[string](nil)(nil)
+
+	err := *new(error)
+	val := ""
+
+	val, err = r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", "", val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewValueReaderFnDecoder(t *testing.T) {
+	b := bytes.NewBuffer(nil)
+	gob.NewEncoder(b).Encode("test1")
+	gob.NewEncoder(b).Encode("test2")
+
+	r := NewValueReaderFn[string](b)(nil)
+
+	err := *new(error)
+	val := ""
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test1", val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", "", val, func(s string) { t.Fatal(s) })
 }

@@ -2,6 +2,7 @@ package iox
 
 import (
 	"context"
+	"encoding/gob"
 	"io"
 )
 
@@ -69,4 +70,52 @@ func (impl ReadCloserImpl[T]) Read(ctx context.Context) (r T, err error) {
 	}
 
 	return impl.ImplR(ctx)
+}
+
+// -----------------------------------------------------------------------------
+// Converters.
+// -----------------------------------------------------------------------------
+
+// NewValueReaderFn creates a new T reader from an io.Reader and Decoder.
+// It simply reads bytes from 'r', decodes them, and passes them along to the
+// caller. As such, the decoder must match the encoder used to create the bytes.
+// If 'r' is nil, an empty Reader is returned; if 'f' is nil, the decoder is set
+// to gob.NewDecoder. Example:
+//
+//	// Used as io.Reader
+//	b := bytes.NewBuffer(nil)
+//
+//	// Using json encoder, so the decoder has to be json in NewValueReaderFn
+//	json.NewEncoder(b).Encode("test1")
+//	json.NewEncoder(b).Encode("test2")
+//
+//	r := NewValueReaderFn[string](b)(
+//		func(r io.Reader) Decoder {
+//			return json.NewDecoder(r)
+//		},
+//	)
+//
+//	t.Log(r.Read(context.Background())) // "test1" <nil>
+//	t.Log(r.Read(context.Background())) // "test2" <nil>
+//	t.Log(r.Read(context.Background())) // "", io.EOF
+func NewValueReaderFn[T any](r io.Reader) func(f decoderFn) Reader[T] {
+	return func(f func(io.Reader) Decoder) Reader[T] {
+		if r == nil {
+			return ReaderImpl[T]{}
+		}
+
+		var d Decoder = gob.NewDecoder(r)
+		if f != nil {
+			if _d := f(r); _d != nil {
+				d = _d
+			}
+		}
+
+		return ReaderImpl[T]{
+			Impl: func(ctx context.Context) (v T, err error) {
+				err = d.Decode(&v)
+				return
+			},
+		}
+	}
 }
