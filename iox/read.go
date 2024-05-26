@@ -119,3 +119,18 @@ func NewValueReaderFn[T any](r io.Reader) func(f decoderFn) Reader[T] {
 		}
 	}
 }
+
+// NewValueReadCloserFn is identical to NewValueReaderFn, except that it returns
+// a ReadCloser which may close 'r'.
+func NewValueReadCloserFn[T any](r io.ReadCloser) func(f decoderFn) ReadCloser[T] {
+	return func(f func(io.Reader) Decoder) ReadCloser[T] {
+		if r == nil {
+			return ReadCloserImpl[T]{}
+		}
+
+		return ReadCloserImpl[T]{
+			ImplC: r.Close,
+			ImplR: NewValueReaderFn[T](r)(f).Read,
+		}
+	}
+}

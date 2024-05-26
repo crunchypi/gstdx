@@ -93,7 +93,7 @@ func TestNewValueReaderFnWithNilReader(t *testing.T) {
 	assertEq("val", "", val, func(s string) { t.Fatal(s) })
 }
 
-func TestNewValueReaderFnDecoder(t *testing.T) {
+func TestNewValueReaderFnWithNilDecoder(t *testing.T) {
 	b := bytes.NewBuffer(nil)
 	gob.NewEncoder(b).Encode("test1")
 	gob.NewEncoder(b).Encode("test2")
@@ -114,4 +114,19 @@ func TestNewValueReaderFnDecoder(t *testing.T) {
 	val, err = r.Read(nil)
 	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
 	assertEq("val", "", val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewValueReadCloserFnIdeal(t *testing.T) {
+	closed := false
+
+	brc := readWriteCloserImpl{ImplC: func() error { closed = true; return nil }}
+	vrc := NewValueReadCloserFn[int](brc)(nil)
+
+	vrc.Close()
+	assertEq("closed", true, closed, func(s string) { t.Fatal(s) })
+}
+
+func TestNewValueReadCloserFnWithNilReader(t *testing.T) {
+	vrc := NewValueReadCloserFn[int](nil)(nil)
+	vrc.Close()
 }
