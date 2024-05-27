@@ -9,6 +9,21 @@ import (
 	"testing"
 )
 
+func tfNewValueReaderFrom[T any](vs ...T) Reader[T] {
+	i := 0
+	return ReaderImpl[T]{
+		Impl: func(ctx context.Context) (val T, err error) {
+			if i >= len(vs) {
+				return val, io.EOF
+			}
+
+			val = vs[i]
+			i++
+			return
+		},
+	}
+}
+
 func TestReaderImplReadIdeal(t *testing.T) {
 	r := ReaderImpl[int]{}
 	r.Impl = func(ctx context.Context) (int, error) { return 1, nil }
@@ -129,4 +144,73 @@ func TestNewValueReadCloserFnIdeal(t *testing.T) {
 func TestNewValueReadCloserFnWithNilReader(t *testing.T) {
 	vrc := NewValueReadCloserFn[int](nil)(nil)
 	vrc.Close()
+}
+
+func TestNewByteReaderFnIdeal(t *testing.T) {
+	vr := tfNewValueReaderFrom("test1", "test2")
+	br := NewByteReaderFn(vr)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
+
+	dec := json.NewDecoder(br)
+	err := *new(error)
+	val := ""
+
+	err = dec.Decode(&val)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test1", val, func(s string) { t.Fatal(s) })
+
+	err = dec.Decode(&val)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+
+	err = dec.Decode(&val)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewByteReaderFnWithNilReader(t *testing.T) {
+	br := NewByteReaderFn[int](nil)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
+
+	dec := json.NewDecoder(br)
+	err := *new(error)
+	val := ""
+
+	err = dec.Decode(&val)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", "", val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewByteReaderFnWithNilEncoder(t *testing.T) {
+	vr := tfNewValueReaderFrom("test1", "test2")
+	br := NewByteReaderFn(vr)(nil)
+
+	dec := gob.NewDecoder(br)
+	err := *new(error)
+	val := ""
+
+	err = dec.Decode(&val)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test1", val, func(s string) { t.Fatal(s) })
+
+	err = dec.Decode(&val)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+
+	err = dec.Decode(&val)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewByteReaderFnWithEncodeError(t *testing.T) {
+	vr := tfNewValueReaderFrom(make(chan int))
+	br := NewByteReaderFn(vr)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
+
+	dec := json.NewDecoder(br)
+	err := *new(error)
+	val := ""
+
+	err = dec.Decode(&val)
+
+	want := "json: unsupported type: chan int"
+	have := err.Error()
+	assertEq("err", want, have, func(s string) { t.Fatal(s) })
 }
