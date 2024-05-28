@@ -214,3 +214,17 @@ func TestNewByteReaderFnWithEncodeError(t *testing.T) {
 	have := err.Error()
 	assertEq("err", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestNewByteReadCloserFnIdeal(t *testing.T) {
+	closed := false
+	vrc := ReadCloserImpl[int]{ImplC: func() error { closed = true; return nil }}
+	brc := NewByteReadCloserFn(vrc)(nil)
+
+	brc.Close()
+	assertEq("closed", true, closed, func(s string) { t.Fatal(s) })
+}
+
+func TestNewByteReadCloserFnWithNilReader(t *testing.T) {
+	brc := NewByteReadCloserFn[int](nil)(nil)
+	brc.Close()
+}
