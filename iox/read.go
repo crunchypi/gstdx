@@ -205,3 +205,36 @@ func NewByteReadCloserFn[T any](r ReadCloser[T]) func(f encoderFn) io.ReadCloser
 		}
 	}
 }
+
+// NewBatchedValueReader returns a reader which batches 'r' into slices with
+// the specified 'size'.  If the size is not set (or negative), it will be set
+// to a small number. Note that the last slice may contain values when the
+// returned reader gives an io.EOF.
+func NewBatchedValueReader[T any](r Reader[T], size int) Reader[[]T] {
+	if r == nil {
+		return ReaderImpl[[]T]{}
+	}
+
+	if size <= 0 {
+		size = 8
+	}
+
+	return ReaderImpl[[]T]{
+		Impl: func(ctx context.Context) (s []T, err error) {
+			s = make([]T, 0, size)
+
+			var v T
+			for i := 0; i < size; i++ {
+				v, err = r.Read(ctx)
+				if err != nil {
+					break
+
+				}
+
+				s = append(s, v)
+			}
+
+			return s, err
+		},
+	}
+}

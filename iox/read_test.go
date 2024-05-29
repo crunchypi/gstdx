@@ -228,3 +228,28 @@ func TestNewByteReadCloserFnWithNilReader(t *testing.T) {
 	brc := NewByteReadCloserFn[int](nil)(nil)
 	brc.Close()
 }
+
+func TestNewBatchedValueReaderIdeal(t *testing.T) {
+	vs := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	vr := tfNewValueReaderFrom(vs...)
+	sr := NewBatchedValueReader(vr, 0)
+
+	s := []int{}
+	err := *new(error)
+
+	s, err = sr.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", vs[0:8], s, func(s string) { t.Fatal(s) })
+
+	s, err = sr.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", vs[8:], s, func(s string) { t.Fatal(s) })
+}
+
+func TestNewBatchedValueReaderWithNilReader(t *testing.T) {
+	sr := NewBatchedValueReader[int](nil, 0)
+
+	s, err := sr.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", *new([]int), s, func(s string) { t.Fatal(s) })
+}
