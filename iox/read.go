@@ -306,3 +306,22 @@ func NewValueReaderWithFilterFn[T any](r Reader[T]) func(f func(v T) bool) Reade
 		}
 	}
 }
+
+func NewValueReaderWithMapperFn[T, U any](r Reader[T]) func(f func(T) U) Reader[U] {
+	return func(f func(T) U) Reader[U] {
+		if r == nil || f == nil {
+			return ReaderImpl[U]{}
+		}
+
+		return ReaderImpl[U]{
+			Impl: func(ctx context.Context) (valOut U, err error) {
+				valIn, err := r.Read(ctx)
+				if err != nil {
+					return valOut, err
+				}
+
+				return f(valIn), err
+			},
+		}
+	}
+}

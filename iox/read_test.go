@@ -345,3 +345,54 @@ func TestNewValueReaderWithFilterFnWithNilFunc(t *testing.T) {
 	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
 	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
 }
+
+func TestNewValueReaderWithMapperFnIdeal(t *testing.T) {
+	r := tfNewValueReaderFrom(1, 2)
+	r = NewValueReaderWithMapperFn[int, int](r)(
+		func(v int) int {
+			return v * -1
+		},
+	)
+
+	err := *new(error)
+	val := 0
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", -1, val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", -2, val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewValueReaderWithMapperFnWithNilReader(t *testing.T) {
+	r := NewValueReaderWithMapperFn[int, int](nil)(
+		func(v int) int {
+			return v * -1
+		},
+	)
+
+	err := *new(error)
+	val := 0
+
+	val, err = r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewValueReaderWithMapperFnWithNilFunc(t *testing.T) {
+	r := tfNewValueReaderFrom(1, 2)
+	r = NewValueReaderWithMapperFn[int, int](r)(nil)
+
+	err := *new(error)
+	val := 0
+
+	val, err = r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
