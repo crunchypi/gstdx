@@ -242,9 +242,9 @@ func NewReaderWithFilterFn[T any](r Reader[T]) func(f func(v T) bool) Reader[T] 
 	}
 }
 
-// NewValueReaderWithMapperFn returns a reader where mapper 'f' is applied on
+// NewReaderWithMapperFn returns a reader where mapper 'f' is applied on
 // values coming from reader 'r'.
-func NewValueReaderWithMapperFn[T, U any](r Reader[T]) func(f func(T) U) Reader[U] {
+func NewReaderWithMapperFn[T, U any](r Reader[T]) func(f func(T) U) Reader[U] {
 	return func(f func(T) U) Reader[U] {
 		if r == nil || f == nil {
 			return ReaderImpl[U]{}

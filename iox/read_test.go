@@ -264,9 +264,9 @@ func TestNewReaderWithFilterFnWithNilFunc(t *testing.T) {
 	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
 }
 
-func TestNewValueReaderWithMapperFnIdeal(t *testing.T) {
+func TestNewReaderWithMapperFnIdeal(t *testing.T) {
 	r := NewReaderFrom(1, 2)
-	r = NewValueReaderWithMapperFn[int, int](r)(
+	r = NewReaderWithMapperFn[int, int](r)(
 		func(v int) int {
 			return v * -1
 		},
@@ -288,8 +288,8 @@ func TestNewValueReaderWithMapperFnIdeal(t *testing.T) {
 	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
 }
 
-func TestNewValueReaderWithMapperFnWithNilReader(t *testing.T) {
-	r := NewValueReaderWithMapperFn[int, int](nil)(
+func TestNewReaderWithMapperFnWithNilReader(t *testing.T) {
+	r := NewReaderWithMapperFn[int, int](nil)(
 		func(v int) int {
 			return v * -1
 		},
@@ -303,9 +303,9 @@ func TestNewValueReaderWithMapperFnWithNilReader(t *testing.T) {
 	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
 }
 
-func TestNewValueReaderWithMapperFnWithNilFunc(t *testing.T) {
+func TestNewReaderWithMapperFnWithNilFunc(t *testing.T) {
 	r := NewReaderFrom(1, 2)
-	r = NewValueReaderWithMapperFn[int, int](r)(nil)
+	r = NewReaderWithMapperFn[int, int](r)(nil)
 
 	err := *new(error)
 	val := 0
