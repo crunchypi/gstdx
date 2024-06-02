@@ -141,11 +141,11 @@ func NewReaderFromBytes[T any](r io.Reader) func(f decoderFn) Reader[T] {
 // Modifiers.
 // -----------------------------------------------------------------------------
 
-// NewBatchedValueReader returns a reader which batches 'r' into slices with
+// NewReaderWithBatching returns a reader which batches 'r' into slices with
 // the specified 'size'.  If the size is not set (or negative), it will be set
 // to a small number. Note that the last slice may contain values when the
 // returned reader gives an io.EOF.
-func NewBatchedValueReader[T any](r Reader[T], size int) Reader[[]T] {
+func NewReaderWithBatching[T any](r Reader[T], size int) Reader[[]T] {
 	if r == nil {
 		return ReaderImpl[[]T]{}
 	}
