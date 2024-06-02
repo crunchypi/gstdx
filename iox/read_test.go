@@ -58,8 +58,8 @@ func TestReadCloserImplCloseWithoutImpl(t *testing.T) {
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
 }
 
-func TestNewValueReaderFrom(t *testing.T) {
-	r := NewValueReaderFrom(1, 2)
+func TestNewReaderFrom(t *testing.T) {
+	r := NewReaderFrom(1, 2)
 
 	err := *new(error)
 	val := 0
@@ -136,7 +136,7 @@ func TestNewValueReaderFnWithNilDecoder(t *testing.T) {
 }
 
 func TestNewByteReaderFnIdeal(t *testing.T) {
-	vr := NewValueReaderFrom("test1", "test2")
+	vr := NewReaderFrom("test1", "test2")
 	br := NewByteReaderFn(vr)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
 
 	dec := json.NewDecoder(br)
@@ -169,7 +169,7 @@ func TestNewByteReaderFnWithNilReader(t *testing.T) {
 }
 
 func TestNewByteReaderFnWithNilEncoder(t *testing.T) {
-	vr := NewValueReaderFrom("test1", "test2")
+	vr := NewReaderFrom("test1", "test2")
 	br := NewByteReaderFn(vr)(nil)
 
 	dec := gob.NewDecoder(br)
@@ -190,7 +190,7 @@ func TestNewByteReaderFnWithNilEncoder(t *testing.T) {
 }
 
 func TestNewByteReaderFnWithEncodeError(t *testing.T) {
-	vr := NewValueReaderFrom(make(chan int))
+	vr := NewReaderFrom(make(chan int))
 	br := NewByteReaderFn(vr)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
 
 	dec := json.NewDecoder(br)
@@ -206,7 +206,7 @@ func TestNewByteReaderFnWithEncodeError(t *testing.T) {
 
 func TestNewBatchedValueReaderIdeal(t *testing.T) {
 	vs := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	vr := NewValueReaderFrom(vs...)
+	vr := NewReaderFrom(vs...)
 	sr := NewBatchedValueReader(vr, 0)
 
 	s := []int{}
@@ -230,7 +230,7 @@ func TestNewBatchedValueReaderWithNilReader(t *testing.T) {
 }
 
 func TestNewUnbatcherIdeal(t *testing.T) {
-	sr := NewBatchedValueReader(NewValueReaderFrom(1, 3, 2), 2)
+	sr := NewBatchedValueReader(NewReaderFrom(1, 3, 2), 2)
 	vr := NewUnbatchedValueReader(sr)
 
 	err := *new(error)
@@ -282,7 +282,7 @@ func TestNewUnbatcherWithEmptyBatchAndErr(t *testing.T) {
 }
 
 func TestNewValueReaderWithFilterFnIdeal(t *testing.T) {
-	r := NewValueReaderFrom(1, 2, 3)
+	r := NewReaderFrom(1, 2, 3)
 	r = NewValueReaderWithFilterFn(r)(func(v int) bool { return v%2 == 0 })
 
 	err := *new(error)
@@ -306,7 +306,7 @@ func TestNewValueReaderWithFilterFnWithNilReader(t *testing.T) {
 }
 
 func TestNewValueReaderWithFilterFnWithNilFunc(t *testing.T) {
-	r := NewValueReaderFrom(2)
+	r := NewReaderFrom(2)
 	r = NewValueReaderWithFilterFn(r)(nil)
 
 	err := *new(error)
@@ -322,7 +322,7 @@ func TestNewValueReaderWithFilterFnWithNilFunc(t *testing.T) {
 }
 
 func TestNewValueReaderWithMapperFnIdeal(t *testing.T) {
-	r := NewValueReaderFrom(1, 2)
+	r := NewReaderFrom(1, 2)
 	r = NewValueReaderWithMapperFn[int, int](r)(
 		func(v int) int {
 			return v * -1
@@ -361,7 +361,7 @@ func TestNewValueReaderWithMapperFnWithNilReader(t *testing.T) {
 }
 
 func TestNewValueReaderWithMapperFnWithNilFunc(t *testing.T) {
-	r := NewValueReaderFrom(1, 2)
+	r := NewReaderFrom(1, 2)
 	r = NewValueReaderWithMapperFn[int, int](r)(nil)
 
 	err := *new(error)
