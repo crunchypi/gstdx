@@ -93,11 +93,7 @@ func NewReaderFrom[T any](vs ...T) Reader[T] {
 	}
 }
 
-// -----------------------------------------------------------------------------
-// Converters.
-// -----------------------------------------------------------------------------
-
-// NewValueReaderFn creates a new T reader from an io.Reader and Decoder.
+// NewReaderFromBytes creates a new T reader from an io.Reader and Decoder.
 // It simply reads bytes from 'r', decodes them, and passes them along to the
 // caller. As such, the decoder must match the encoder used to create the bytes.
 // If 'r' is nil, an empty Reader is returned; if 'f' is nil, the decoder is set
@@ -106,11 +102,11 @@ func NewReaderFrom[T any](vs ...T) Reader[T] {
 //	// Used as io.Reader
 //	b := bytes.NewBuffer(nil)
 //
-//	// Using json encoder, so the decoder has to be json in NewValueReaderFn
+//	// Using json encoder, so the decoder has to be json in NewReaderFromBytes
 //	json.NewEncoder(b).Encode("test1")
 //	json.NewEncoder(b).Encode("test2")
 //
-//	r := NewValueReaderFn[string](b)(
+//	r := NewReaderFromBytes[string](b)(
 //		func(r io.Reader) Decoder {
 //			return json.NewDecoder(r)
 //		},
@@ -119,7 +115,7 @@ func NewReaderFrom[T any](vs ...T) Reader[T] {
 //	t.Log(r.Read(context.Background())) // "test1" <nil>
 //	t.Log(r.Read(context.Background())) // "test2" <nil>
 //	t.Log(r.Read(context.Background())) // "", io.EOF
-func NewValueReaderFn[T any](r io.Reader) func(f decoderFn) Reader[T] {
+func NewReaderFromBytes[T any](r io.Reader) func(f decoderFn) Reader[T] {
 	return func(f func(io.Reader) Decoder) Reader[T] {
 		if r == nil {
 			return ReaderImpl[T]{}
@@ -141,6 +137,10 @@ func NewValueReaderFn[T any](r io.Reader) func(f decoderFn) Reader[T] {
 	}
 }
 
+// -----------------------------------------------------------------------------
+// Converters.
+// -----------------------------------------------------------------------------
+
 // NewByteReaderFn creates an io.Reader from a Reader and Encoder.
 // It simply reads values from 'r', encodes them, and passes them along to the
 // caller. As such, when decoding values from the returned io.Reader one should
@@ -154,7 +154,7 @@ func NewValueReaderFn[T any](r io.Reader) func(f decoderFn) Reader[T] {
 //	json.NewEncoder(b).Encode("test2")
 //
 //	// Conversion to a value reader, then back to a byte reader.
-//	vr := NewValueReaderFn[string](b)(func(r io.Reader) Decoder { return json.NewDecoder(r) })
+//	vr := NewReaderFromBytes[string](b)(func(r io.Reader) Decoder { return json.NewDecoder(r) })
 //	br := NewByteReaderFn[string](vr)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
 //
 //	// Instantly pass it to a decoder just so we may log out the values.

@@ -77,13 +77,13 @@ func TestNewReaderFrom(t *testing.T) {
 	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
 }
 
-func TestNewValueReaderFnIdeal(t *testing.T) {
+func TestNewReaderFromBytesIdeal(t *testing.T) {
 	b := bytes.NewBuffer(nil)
 	json.NewEncoder(b).Encode("test1")
 	json.NewEncoder(b).Encode("test2")
 
 	f := func(r io.Reader) Decoder { return json.NewDecoder(r) }
-	r := NewValueReaderFn[string](b)(f)
+	r := NewReaderFromBytes[string](b)(f)
 
 	err := *new(error)
 	val := ""
@@ -101,8 +101,8 @@ func TestNewValueReaderFnIdeal(t *testing.T) {
 	assertEq("val", "", val, func(s string) { t.Fatal(s) })
 }
 
-func TestNewValueReaderFnWithNilReader(t *testing.T) {
-	r := NewValueReaderFn[string](nil)(nil)
+func TestNewReaderFromBytesWithNilReader(t *testing.T) {
+	r := NewReaderFromBytes[string](nil)(nil)
 
 	err := *new(error)
 	val := ""
@@ -112,12 +112,12 @@ func TestNewValueReaderFnWithNilReader(t *testing.T) {
 	assertEq("val", "", val, func(s string) { t.Fatal(s) })
 }
 
-func TestNewValueReaderFnWithNilDecoder(t *testing.T) {
+func TestNewReaderFromBytesWithNilDecoder(t *testing.T) {
 	b := bytes.NewBuffer(nil)
 	gob.NewEncoder(b).Encode("test1")
 	gob.NewEncoder(b).Encode("test2")
 
-	r := NewValueReaderFn[string](b)(nil)
+	r := NewReaderFromBytes[string](b)(nil)
 
 	err := *new(error)
 	val := ""
