@@ -217,9 +217,9 @@ func NewReaderWithUnbatching[T any](r Reader[[]T]) Reader[T] {
 	}
 }
 
-// NewValueReaderWithFilterFn returns a reader where filter 'f' is applied on
+// NewReaderWithFilterFn returns a reader where filter 'f' is applied on
 // values coming from reader 'r', removing/skipping values when f(v) == false.
-func NewValueReaderWithFilterFn[T any](r Reader[T]) func(f func(v T) bool) Reader[T] {
+func NewReaderWithFilterFn[T any](r Reader[T]) func(f func(v T) bool) Reader[T] {
 	return func(f func(v T) bool) Reader[T] {
 		if r == nil {
 			return ReaderImpl[T]{}
