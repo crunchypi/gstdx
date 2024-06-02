@@ -172,9 +172,9 @@ func TestNewReaderWithBatchingWithNilReader(t *testing.T) {
 	assertEq("val", *new([]int), s, func(s string) { t.Fatal(s) })
 }
 
-func TestNewUnbatcherIdeal(t *testing.T) {
+func TestNewReaderWithUnbatchingIdeal(t *testing.T) {
 	sr := NewReaderWithBatching(NewReaderFrom(1, 3, 2), 2)
-	vr := NewUnbatchedValueReader(sr)
+	vr := NewReaderWithUnbatching(sr)
 
 	err := *new(error)
 	val := 0
@@ -196,28 +196,28 @@ func TestNewUnbatcherIdeal(t *testing.T) {
 	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
 }
 
-func TestNewUnbatcherWithNilReader(t *testing.T) {
-	vr := NewUnbatchedValueReader[int](nil)
+func TestNewReaderWithUnbatchingWithNilReader(t *testing.T) {
+	vr := NewReaderWithUnbatching[int](nil)
 
 	val, err := vr.Read(nil)
 	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
 	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
 }
 
-func TestNewUnbatcherWithEmptyBatchAndNilErr(t *testing.T) {
+func TestNewReaderWithUnbatchingWithEmptyBatchAndNilErr(t *testing.T) {
 	sr := ReaderImpl[[]int]{}
 	sr.Impl = func(ctx context.Context) (s []int, err error) { return }
-	vr := NewUnbatchedValueReader(sr)
+	vr := NewReaderWithUnbatching(sr)
 
 	val, err := vr.Read(nil)
 	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
 	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
 }
 
-func TestNewUnbatcherWithEmptyBatchAndErr(t *testing.T) {
+func TestNewReaderWithUnbatchingWithEmptyBatchAndErr(t *testing.T) {
 	sr := ReaderImpl[[]int]{}
 	sr.Impl = func(ctx context.Context) (s []int, err error) { err = io.EOF; return }
-	vr := NewUnbatchedValueReader(sr)
+	vr := NewReaderWithUnbatching(sr)
 
 	val, err := vr.Read(nil)
 	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })

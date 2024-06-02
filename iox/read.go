@@ -174,10 +174,10 @@ func NewReaderWithBatching[T any](r Reader[T], size int) Reader[[]T] {
 	}
 }
 
-// NewUnbatchedValueReader returns a reader of T from a reader of []T.
+// NewReaderWithUnbatching returns a reader of T from a reader of []T.
 // Note that there is some internal buffering, so you may want to use this
 // with caution as an unread buffer may cause value loss.
-func NewUnbatchedValueReader[T any](r Reader[[]T]) Reader[T] {
+func NewReaderWithUnbatching[T any](r Reader[[]T]) Reader[T] {
 	if r == nil {
 		return ReaderImpl[T]{}
 	}
