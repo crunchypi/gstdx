@@ -196,21 +196,6 @@ func NewByteReaderFn[T any](r Reader[T]) func(f encoderFn) io.Reader {
 	}
 }
 
-// NewByteReadCloserFn is identical to NewByteReaderFn, except that it returns
-// an io.ReadCloser which may close 'r'.
-func NewByteReadCloserFn[T any](r ReadCloser[T]) func(f encoderFn) io.ReadCloser {
-	return func(f func(io.Writer) Encoder) io.ReadCloser {
-		if r == nil {
-			return readWriteCloserImpl{}
-		}
-
-		return readWriteCloserImpl{
-			ImplC: r.Close,
-			ImplR: NewByteReaderFn(r)(f).Read,
-		}
-	}
-}
-
 // NewBatchedValueReader returns a reader which batches 'r' into slices with
 // the specified 'size'.  If the size is not set (or negative), it will be set
 // to a small number. Note that the last slice may contain values when the
