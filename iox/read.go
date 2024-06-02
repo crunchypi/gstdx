@@ -74,6 +74,26 @@ func (impl ReadCloserImpl[T]) Read(ctx context.Context) (r T, err error) {
 }
 
 // -----------------------------------------------------------------------------
+// Constructors.
+// -----------------------------------------------------------------------------
+
+// NewValueReaderFrom returns a Reader which yields values from the given vals.
+func NewValueReaderFrom[T any](vs ...T) Reader[T] {
+	i := 0
+	return ReaderImpl[T]{
+		Impl: func(ctx context.Context) (val T, err error) {
+			if i >= len(vs) {
+				return val, io.EOF
+			}
+
+			val = vs[i]
+			i++
+			return
+		},
+	}
+}
+
+// -----------------------------------------------------------------------------
 // Converters.
 // -----------------------------------------------------------------------------
 
@@ -307,6 +327,8 @@ func NewValueReaderWithFilterFn[T any](r Reader[T]) func(f func(v T) bool) Reade
 	}
 }
 
+// NewValueReaderWithMapperFn returns a reader where mapper 'f' is applied on
+// values coming from reader 'r'.
 func NewValueReaderWithMapperFn[T, U any](r Reader[T]) func(f func(T) U) Reader[U] {
 	return func(f func(T) U) Reader[U] {
 		if r == nil || f == nil {
