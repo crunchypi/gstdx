@@ -138,63 +138,8 @@ func NewReaderFromBytes[T any](r io.Reader) func(f decoderFn) Reader[T] {
 }
 
 // -----------------------------------------------------------------------------
-// Converters.
+// Modifiers.
 // -----------------------------------------------------------------------------
-
-// NewByteReaderFn creates an io.Reader from a Reader and Encoder.
-// It simply reads values from 'r', encodes them, and passes them along to the
-// caller. As such, when decoding values from the returned io.Reader one should
-// use a decoder which matches the encoder passed here. If 'r' is nil, an
-// empty (not nil) io.Reader is returned; if 'f' is nil, the encoder is set to
-// gob.NewEncoder. Example:
-//
-//	// First encode some values into bytes.
-//	b := bytes.NewBuffer(nil)
-//	json.NewEncoder(b).Encode("test1")
-//	json.NewEncoder(b).Encode("test2")
-//
-//	// Conversion to a value reader, then back to a byte reader.
-//	vr := NewReaderFromBytes[string](b)(func(r io.Reader) Decoder { return json.NewDecoder(r) })
-//	br := NewByteReaderFn[string](vr)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
-//
-//	// Instantly pass it to a decoder just so we may log out the values.
-//	dec := json.NewDecoder(br)
-//	val := ""
-//
-//	t.Log(dec.Decode(&val), val) // <nil>, "test1"
-//	t.Log(dec.Decode(&val), val) // <nil>, "test2"
-//	t.Log(dec.Decode(&val), val) // EOF, ""
-func NewByteReaderFn[T any](r Reader[T]) func(f encoderFn) io.Reader {
-	return func(f func(io.Writer) Encoder) io.Reader {
-		if r == nil {
-			r = ReaderImpl[T]{}
-		}
-
-		b := bytes.NewBuffer(nil)
-		e := Encoder(gob.NewEncoder(b))
-		if f != nil {
-			if _e := f(b); _e != nil {
-				e = _e
-			}
-		}
-
-		return readWriteCloserImpl{
-			ImplR: func(p []byte) (n int, err error) {
-				v, err := r.Read(context.Background())
-				if err != nil {
-					return 0, err
-				}
-
-				err = e.Encode(v)
-				if err != nil {
-					return 0, err
-				}
-
-				return b.Read(p)
-			},
-		}
-	}
-}
 
 // NewBatchedValueReader returns a reader which batches 'r' into slices with
 // the specified 'size'.  If the size is not set (or negative), it will be set
@@ -313,6 +258,59 @@ func NewValueReaderWithMapperFn[T, U any](r Reader[T]) func(f func(T) U) Reader[
 				}
 
 				return f(valIn), err
+			},
+		}
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Converters.
+// -----------------------------------------------------------------------------
+
+// ReaderIntoBytes creates an io.Reader from a Reader and Encoder.
+// It simply reads values from 'r', encodes them, and passes them along to the
+// caller. As such, when decoding values from the returned io.Reader one should
+// use a decoder which matches the encoder passed here. If 'r' is nil, an
+// empty (not nil) io.Reader is returned; if 'f' is nil, the encoder is set to
+// gob.NewEncoder. Example:
+//
+//	vr := NewReaderFrom("test1", "test2")
+//	br := ReaderIntoBytes(vr)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
+//
+//	// Instantly pass it to a decoder just so we may log out the values.
+//	dec := json.NewDecoder(br)
+//	val := ""
+//
+//	t.Log(dec.Decode(&val), val) // <nil>, "test1"
+//	t.Log(dec.Decode(&val), val) // <nil>, "test2"
+//	t.Log(dec.Decode(&val), val) // EOF, ""
+func ReaderIntoBytes[T any](r Reader[T]) func(f encoderFn) io.Reader {
+	return func(f func(io.Writer) Encoder) io.Reader {
+		if r == nil {
+			r = ReaderImpl[T]{}
+		}
+
+		b := bytes.NewBuffer(nil)
+		e := Encoder(gob.NewEncoder(b))
+		if f != nil {
+			if _e := f(b); _e != nil {
+				e = _e
+			}
+		}
+
+		return readWriteCloserImpl{
+			ImplR: func(p []byte) (n int, err error) {
+				v, err := r.Read(context.Background())
+				if err != nil {
+					return 0, err
+				}
+
+				err = e.Encode(v)
+				if err != nil {
+					return 0, err
+				}
+
+				return b.Read(p)
 			},
 		}
 	}

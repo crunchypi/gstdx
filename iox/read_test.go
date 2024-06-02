@@ -9,6 +9,10 @@ import (
 	"testing"
 )
 
+// -----------------------------------------------------------------------------
+// Impls.
+// -----------------------------------------------------------------------------
+
 func TestReaderImplReadIdeal(t *testing.T) {
 	r := ReaderImpl[int]{}
 	r.Impl = func(ctx context.Context) (int, error) { return 1, nil }
@@ -57,6 +61,10 @@ func TestReadCloserImplCloseWithoutImpl(t *testing.T) {
 	err := rc.Close()
 	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
 }
+
+// -----------------------------------------------------------------------------
+// Constructors.
+// -----------------------------------------------------------------------------
 
 func TestNewReaderFrom(t *testing.T) {
 	r := NewReaderFrom(1, 2)
@@ -135,74 +143,9 @@ func TestNewReaderFromBytesWithNilDecoder(t *testing.T) {
 	assertEq("val", "", val, func(s string) { t.Fatal(s) })
 }
 
-func TestNewByteReaderFnIdeal(t *testing.T) {
-	vr := NewReaderFrom("test1", "test2")
-	br := NewByteReaderFn(vr)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
-
-	dec := json.NewDecoder(br)
-	err := *new(error)
-	val := ""
-
-	err = dec.Decode(&val)
-	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("val", "test1", val, func(s string) { t.Fatal(s) })
-
-	err = dec.Decode(&val)
-	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
-
-	err = dec.Decode(&val)
-	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
-	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
-}
-
-func TestNewByteReaderFnWithNilReader(t *testing.T) {
-	br := NewByteReaderFn[int](nil)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
-
-	dec := json.NewDecoder(br)
-	err := *new(error)
-	val := ""
-
-	err = dec.Decode(&val)
-	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
-	assertEq("val", "", val, func(s string) { t.Fatal(s) })
-}
-
-func TestNewByteReaderFnWithNilEncoder(t *testing.T) {
-	vr := NewReaderFrom("test1", "test2")
-	br := NewByteReaderFn(vr)(nil)
-
-	dec := gob.NewDecoder(br)
-	err := *new(error)
-	val := ""
-
-	err = dec.Decode(&val)
-	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("val", "test1", val, func(s string) { t.Fatal(s) })
-
-	err = dec.Decode(&val)
-	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
-	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
-
-	err = dec.Decode(&val)
-	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
-	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
-}
-
-func TestNewByteReaderFnWithEncodeError(t *testing.T) {
-	vr := NewReaderFrom(make(chan int))
-	br := NewByteReaderFn(vr)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
-
-	dec := json.NewDecoder(br)
-	err := *new(error)
-	val := ""
-
-	err = dec.Decode(&val)
-
-	want := "json: unsupported type: chan int"
-	have := err.Error()
-	assertEq("err", want, have, func(s string) { t.Fatal(s) })
-}
+// -----------------------------------------------------------------------------
+// Modifiers.
+// -----------------------------------------------------------------------------
 
 func TestNewBatchedValueReaderIdeal(t *testing.T) {
 	vs := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
@@ -370,4 +313,77 @@ func TestNewValueReaderWithMapperFnWithNilFunc(t *testing.T) {
 	val, err = r.Read(nil)
 	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
 	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+// -----------------------------------------------------------------------------
+// Converters.
+// -----------------------------------------------------------------------------
+
+func TestReaderIntoBytesIdeal(t *testing.T) {
+	vr := NewReaderFrom("test1", "test2")
+	br := ReaderIntoBytes(vr)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
+
+	dec := json.NewDecoder(br)
+	err := *new(error)
+	val := ""
+
+	err = dec.Decode(&val)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test1", val, func(s string) { t.Fatal(s) })
+
+	err = dec.Decode(&val)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+
+	err = dec.Decode(&val)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoBytesWithNilReader(t *testing.T) {
+	br := ReaderIntoBytes[int](nil)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
+
+	dec := json.NewDecoder(br)
+	err := *new(error)
+	val := ""
+
+	err = dec.Decode(&val)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", "", val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoBytesWithNilEncoder(t *testing.T) {
+	vr := NewReaderFrom("test1", "test2")
+	br := ReaderIntoBytes(vr)(nil)
+
+	dec := gob.NewDecoder(br)
+	err := *new(error)
+	val := ""
+
+	err = dec.Decode(&val)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test1", val, func(s string) { t.Fatal(s) })
+
+	err = dec.Decode(&val)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+
+	err = dec.Decode(&val)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoBytesWithEncodeError(t *testing.T) {
+	vr := NewReaderFrom(make(chan int))
+	br := ReaderIntoBytes(vr)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
+
+	dec := json.NewDecoder(br)
+	err := *new(error)
+	val := ""
+
+	err = dec.Decode(&val)
+
+	want := "json: unsupported type: chan int"
+	have := err.Error()
+	assertEq("err", want, have, func(s string) { t.Fatal(s) })
 }
