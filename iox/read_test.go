@@ -387,3 +387,27 @@ func TestReaderIntoBytesWithEncodeError(t *testing.T) {
 	have := err.Error()
 	assertEq("err", want, have, func(s string) { t.Fatal(s) })
 }
+
+func TestReaderIntoSliceIdeal(t *testing.T) {
+	r := NewReaderFrom(1, 2, 3)
+	s, err := ReaderIntoSlice(r)
+
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("s", []int{1, 2, 3}, s, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoSliceWithNilReader(t *testing.T) {
+	s, err := ReaderIntoSlice[int](nil)
+
+	assertEq("err", nil, err, func(s string) { t.Fatal(s) })
+	assertEq("s", []int{}, s, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoSliceWithCustomError(t *testing.T) {
+	r := ReaderImpl[int]{}
+	r.Impl = func(ctx context.Context) (int, error) { return 0, io.ErrClosedPipe }
+	s, err := ReaderIntoSlice(r)
+
+	assertEq("err", io.ErrClosedPipe, err, func(s string) { t.Fatal(s) })
+	assertEq("s", []int{}, s, func(s string) { t.Fatal(s) })
+}

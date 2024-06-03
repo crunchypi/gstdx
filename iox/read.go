@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"errors"
 	"io"
 )
 
@@ -313,5 +314,26 @@ func ReaderIntoBytes[T any](r Reader[T]) func(f encoderFn) io.Reader {
 				return b.Read(p)
 			},
 		}
+	}
+}
+
+// ReaderIntoSlice reads all values from 'r' and returns them in a slice.
+// Note that the error, if any, will not be io.EOF.
+func ReaderIntoSlice[T any](r Reader[T]) (s []T, err error) {
+	if r == nil {
+		return []T{}, err
+	}
+
+	s = make([]T, 0, 32)
+	ctx := context.Background()
+	for v, err := r.Read(ctx); ; v, err = r.Read(ctx) {
+		if errors.Is(err, io.EOF) {
+			return s, nil
+		}
+		if err != nil {
+			return s, err
+		}
+
+		s = append(s, v)
 	}
 }
