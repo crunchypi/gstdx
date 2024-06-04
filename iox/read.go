@@ -337,3 +337,38 @@ func ReaderIntoSlice[T any](r Reader[T]) (s []T, err error) {
 		s = append(s, v)
 	}
 }
+
+// IntoMapKFn returns a func which creates a map[K]V using the given reader 'r'.
+// It does so by reading all elements of 'r' and storing them as keys. Vals
+// are defined with the given func 'f'. The error, if any, will not be io.EOF
+// Example:
+//
+//	r := NewReaderFrom(1, 2, 3)
+//	m, err := ReaderIntoMapKFn[int, int](r)(
+//		func(key int) (val int) {
+//			val = key + 1
+//			return
+//		},
+//	)
+//
+//	t.Log(m, err)	// map[1:2 2:3 3:4] <nil>
+func ReaderIntoMapKFn[K comparable, V any](r Reader[K]) func(f func(K) V) (map[K]V, error) {
+	return func(f func(K) V) (map[K]V, error) {
+		if r == nil || f == nil {
+			return map[K]V{}, nil
+		}
+
+		m := make(map[K]V)
+		ctx := context.Background()
+		for k, err := r.Read(ctx); ; k, err = r.Read(ctx) {
+			if errors.Is(err, io.EOF) {
+				return m, nil
+			}
+			if err != nil {
+				return m, err
+			}
+
+			m[k] = f(k)
+		}
+	}
+}

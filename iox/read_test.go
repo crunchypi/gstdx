@@ -411,3 +411,35 @@ func TestReaderIntoSliceWithCustomError(t *testing.T) {
 	assertEq("err", io.ErrClosedPipe, err, func(s string) { t.Fatal(s) })
 	assertEq("s", []int{}, s, func(s string) { t.Fatal(s) })
 }
+
+func TestReaderIntoMapKFnIdeal(t *testing.T) {
+	r := NewReaderFrom(1, 2)
+	m, err := ReaderIntoMapKFn[int, int](r)(func(k int) int { return k + 1 })
+
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{1: 2, 2: 3}, m, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoMapKFnWithNilReader(t *testing.T) {
+	m, err := ReaderIntoMapKFn[int, int](nil)(func(k int) int { return k + 1 })
+
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{}, m, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoMapKFnWithNilFunc(t *testing.T) {
+	r := NewReaderFrom(1, 2)
+	m, err := ReaderIntoMapKFn[int, int](r)(nil)
+
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{}, m, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoMapKFnWithCustomError(t *testing.T) {
+	r := ReaderImpl[int]{}
+	r.Impl = func(ctx context.Context) (int, error) { return 0, io.ErrClosedPipe }
+	m, err := ReaderIntoMapKFn[int, int](r)(func(k int) int { return k })
+
+	assertEq("err", io.ErrClosedPipe, err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{}, m, func(s string) { t.Fatal(s) })
+}
