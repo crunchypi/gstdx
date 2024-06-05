@@ -372,3 +372,38 @@ func ReaderIntoMapKFn[K comparable, V any](r Reader[K]) func(f func(K) V) (map[K
 		}
 	}
 }
+
+// IntoMapVFn returns a func which creates a map[K]V using the given reader 'r'.
+// It does so by reading all elements of 'r'  and storing them as values for
+// keys that are defined using the given func 'f'.
+// Example:
+//
+//	r := NewReaderFrom(1, 2, 3)
+//	m, err := ReaderIntoMapVFn[int, int](r)(
+//		func(key int) (val int) {
+//			val = key - 1
+//			return
+//		},
+//	)
+//
+//	t.Log(m, err) // map[0:1, 1:2, 2:3] <nil>
+func ReaderIntoMapVFn[K comparable, V any](r Reader[V]) func(f func(V) K) (map[K]V, error) {
+	return func(f func(V) K) (map[K]V, error) {
+		if r == nil || f == nil {
+			return map[K]V{}, nil
+		}
+
+		m := make(map[K]V)
+		ctx := context.Background()
+		for v, err := r.Read(ctx); ; v, err = r.Read(ctx) {
+			if errors.Is(err, io.EOF) {
+				return m, nil
+			}
+			if err != nil {
+				return m, err
+			}
+
+			m[f(v)] = v
+		}
+	}
+}

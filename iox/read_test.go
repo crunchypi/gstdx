@@ -443,3 +443,35 @@ func TestReaderIntoMapKFnWithCustomError(t *testing.T) {
 	assertEq("err", io.ErrClosedPipe, err, func(s string) { t.Fatal(s) })
 	assertEq("map", map[int]int{}, m, func(s string) { t.Fatal(s) })
 }
+
+func TestReaderIntoMapVFnIdeal(t *testing.T) {
+	r := NewReaderFrom(1, 2)
+	m, err := ReaderIntoMapVFn[int, int](r)(func(v int) int { return v - 1 })
+
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{0: 1, 1: 2}, m, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoMapVFnWithNilReader(t *testing.T) {
+	m, err := ReaderIntoMapVFn[int, int](nil)(func(v int) int { return v + 1 })
+
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{}, m, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoMapVFnWithNilFunc(t *testing.T) {
+	r := NewReaderFrom(1, 2)
+	m, err := ReaderIntoMapVFn[int, int](r)(nil)
+
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{}, m, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoMapVFnWithCustomError(t *testing.T) {
+	r := ReaderImpl[int]{}
+	r.Impl = func(ctx context.Context) (int, error) { return 0, io.ErrClosedPipe }
+	m, err := ReaderIntoMapVFn[int, int](r)(func(k int) int { return k })
+
+	assertEq("err", io.ErrClosedPipe, err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{}, m, func(s string) { t.Fatal(s) })
+}
