@@ -475,3 +475,57 @@ func TestReaderIntoMapVFnWithCustomError(t *testing.T) {
 	assertEq("err", io.ErrClosedPipe, err, func(s string) { t.Fatal(s) })
 	assertEq("map", map[int]int{}, m, func(s string) { t.Fatal(s) })
 }
+
+func TestReaderIntoChanIdeal(t *testing.T) {
+	r := NewReaderFrom(1, 2)
+	ch := ReaderIntoChan(r)
+
+	ok := false
+	val := ErrWrapped[int]{}
+
+	val, ok = <-ch
+	assertEq("ok", true, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 1, val.Val, func(s string) { t.Fatal(s) })
+
+	val, ok = <-ch
+	assertEq("ok", true, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 2, val.Val, func(s string) { t.Fatal(s) })
+
+	val, ok = <-ch
+	assertEq("ok", false, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoChanWithNilReader(t *testing.T) {
+	ch := ReaderIntoChan[int](nil)
+
+	ok := false
+	val := ErrWrapped[int]{}
+
+	val, ok = <-ch
+	assertEq("ok", false, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoChanWithCustomError(t *testing.T) {
+	r := ReaderImpl[int]{}
+	r.Impl = func(ctx context.Context) (int, error) { return 0, io.ErrClosedPipe }
+	ch := ReaderIntoChan(r)
+
+	ok := false
+	val := ErrWrapped[int]{}
+
+	val, ok = <-ch
+	assertEq("ok", true, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", io.ErrClosedPipe, val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+
+	val, ok = <-ch
+	assertEq("ok", false, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+}

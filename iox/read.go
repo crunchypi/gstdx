@@ -407,3 +407,47 @@ func ReaderIntoMapVFn[K comparable, V any](r Reader[V]) func(f func(V) K) (map[K
 		}
 	}
 }
+
+type ErrWrapped[T any] struct {
+	Err error
+	Val T
+}
+
+// ReaderIntoChan returns a chan which is fed the contents of 'r' from a new
+// goroutine. The error in the ErrWrapped[T] will not contain io.EOF.
+// Example:
+//
+//	r := NewReaderFrom(1, 2, 3)
+//	for ew := range ReaderIntoChan(r) {
+//		// Prints {<nil> 1} on 1st iteration.
+//		// Prints {<nil> 2} on 2nd iteration.
+//		// Prints {<nil> 3} on 3rd iteration.
+//		t.Log(ew)
+//	}
+func ReaderIntoChan[T any](r Reader[T]) <-chan ErrWrapped[T] {
+	ch := make(chan ErrWrapped[T])
+	if r == nil {
+		close(ch)
+		return ch
+	}
+
+	go func() {
+		defer close(ch)
+
+		ctx := context.Background()
+		for {
+			v, err := r.Read(ctx)
+			if errors.Is(err, io.EOF) {
+				return
+			}
+			if err != nil {
+				ch <- ErrWrapped[T]{Err: err}
+				return
+			}
+
+			ch <- ErrWrapped[T]{Val: v}
+		}
+	}()
+
+	return ch
+}
