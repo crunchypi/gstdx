@@ -451,3 +451,44 @@ func ReaderIntoChan[T any](r Reader[T]) <-chan ErrWrapped[T] {
 
 	return ch
 }
+
+// ReaderIntoGenerator returns a generator which reads from 'r'. The generator
+// will stop on the first error and the ErrWrapped[T] will not contain io.EOF.
+// Example:
+//
+//	r := NewReaderFrom(1, 2, 3)
+//	g := ReaderIntoGenerator(r)
+//
+//	for ev, ok := g(); ok; ev, ok = g() {
+//		// Prints {<nil> 1} on 1st iteration.
+//		// Prints {<nil> 2} on 2nd iteration.
+//		// Prints {<nil> 3} on 3rd iteration.
+//		t.Log(ev)
+//	}
+func ReaderIntoGenerator[T any](r Reader[T]) func() (val ErrWrapped[T], cont bool) {
+	sig := false
+	ctx := context.Background()
+	return func() (val ErrWrapped[T], cont bool) {
+		if r == nil {
+			return
+		}
+
+		if sig {
+			return
+		}
+
+		val.Val, val.Err = r.Read(ctx)
+		if errors.Is(val.Err, io.EOF) {
+			val.Err = nil
+			return
+		}
+		if val.Err != nil {
+			sig = true
+			cont = true
+			return
+		}
+
+		cont = true
+		return
+	}
+}

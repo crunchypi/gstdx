@@ -529,3 +529,57 @@ func TestReaderIntoChanWithCustomError(t *testing.T) {
 	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
 	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
 }
+
+func TestReaderIntoGeneratorIdeal(t *testing.T) {
+	r := NewReaderFrom(1, 2)
+	g := ReaderIntoGenerator(r)
+
+	ok := false
+	val := ErrWrapped[int]{}
+
+	val, ok = g()
+	assertEq("ok", true, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 1, val.Val, func(s string) { t.Fatal(s) })
+
+	val, ok = g()
+	assertEq("ok", true, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 2, val.Val, func(s string) { t.Fatal(s) })
+
+	val, ok = g()
+	assertEq("ok", false, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoGeneratorWithNilReader(t *testing.T) {
+	g := ReaderIntoGenerator[int](nil)
+
+	ok := false
+	val := ErrWrapped[int]{}
+
+	val, ok = g()
+	assertEq("ok", false, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoGeneratorWithCustomError(t *testing.T) {
+	r := ReaderImpl[int]{}
+	r.Impl = func(ctx context.Context) (int, error) { return 0, io.ErrClosedPipe }
+	g := ReaderIntoGenerator(r)
+
+	ok := false
+	val := ErrWrapped[int]{}
+
+	val, ok = g()
+	assertEq("ok", true, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", io.ErrClosedPipe, val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+
+	val, ok = g()
+	assertEq("ok", false, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+}
