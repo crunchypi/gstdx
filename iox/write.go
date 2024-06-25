@@ -271,3 +271,38 @@ func NewWriterWithUnbatching[T any](w Writer[T]) Writer[[]T] {
 		},
 	}
 }
+
+// NewWriterWithFilterFn returns a writer which writes to 'w' if incoming values
+// are not filtered out with 'f'. If 'w' is nil, an empty WriterImpl[T]{} is
+// returned; if 'f' is nil, 'w' is returned.
+// Example:
+//
+//	// Writes which logs values through 't.Log'.
+//	logWriter := WriterImpl[int]{}
+//	logWriter.Impl = func(_ context.Context, v int) error { t.Log(v); return nil }
+//
+//	// Writer with filter which filters out anything below 2.
+//	w := NewWriterWithFilterFn(logWriter)(func(v int) bool { return v >= 2 })
+//	w.Write(nil, 1) // logWriter logs: <nothing>
+//	w.Write(nil, 2) // logWriter logs: 2
+//	w.Write(nil, 3) // logWriter logs: 3
+func NewWriterWithFilterFn[T any](w Writer[T]) func(f func(T) bool) Writer[T] {
+	return func(f func(T) bool) Writer[T] {
+		if w == nil {
+			return WriterImpl[T]{}
+		}
+		if f == nil {
+			return w
+		}
+
+		return WriterImpl[T]{
+			Impl: func(ctx context.Context, v T) error {
+				if !f(v) {
+					return nil
+				}
+
+				return w.Write(ctx, v)
+			},
+		}
+	}
+}
