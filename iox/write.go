@@ -306,3 +306,31 @@ func NewWriterWithFilterFn[T any](w Writer[T]) func(f func(T) bool) Writer[T] {
 		}
 	}
 }
+
+// NewWriterWithMapperFn returns a writer which passes values to 'f', of which
+// the returned values are forwarded to 'w'. If either 'w' or 'f' is nil, an
+// empty WriterImpl[T]{} is returned.
+// Example:
+//
+//	// Writes which logs values through 't.Log'.
+//	logWriter := WriterImpl[int]{}
+//	logWriter.Impl = func(_ context.Context, v int) error { t.Log(v); return nil }
+//
+//	// Writer with adds +1 to each element.
+//	w := NewWriterWithMapperFn[int](logWriter)(func(v int) int { return v + 1 })
+//	w.Write(nil, 1) // logWriter logs: 2
+//	w.Write(nil, 2) // logWriter logs: 3
+//	w.Write(nil, 3) // logWriter logs: 4
+func NewWriterWithMapperFn[T, U any](w Writer[U]) func(f func(T) U) Writer[T] {
+	return func(f func(T) U) Writer[T] {
+		if w == nil || f == nil {
+			return WriterImpl[T]{}
+		}
+
+		return WriterImpl[T]{
+			Impl: func(ctx context.Context, v T) error {
+				return w.Write(ctx, f(v))
+			},
+		}
+	}
+}

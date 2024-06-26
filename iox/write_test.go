@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
 	"io"
 	"testing"
 )
@@ -285,4 +286,32 @@ func TestWriterWithFilterFnWithNilFilter(t *testing.T) {
 	assertEq("err", *new(error), w.Write(nil, 3), func(s string) { t.Fatal(s) })
 
 	assertEq("val", []int{1, 2, 3}, s, func(s string) { t.Fatal(s) })
+}
+
+func TestNewWriterWithMapperFnIdeal(t *testing.T) {
+	s := make([]string, 0, 3)
+	w := NewWriterWithMapperFn[int](newSliceWriter(&s))(
+		func(v int) string {
+			return fmt.Sprint(v)
+		},
+	)
+
+	assertEq("err", *new(error), w.Write(nil, 1), func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), w.Write(nil, 2), func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), w.Write(nil, 3), func(s string) { t.Fatal(s) })
+
+	assertEq("val", []string{"1", "2", "3"}, s, func(s string) { t.Fatal(s) })
+}
+
+func TestNewWriterWithMapperFnWithNilWriter(t *testing.T) {
+	w := NewWriterWithMapperFn[int, int](nil)(func(v int) int { return v })
+
+	assertEq("err", io.ErrClosedPipe, w.Write(nil, 1), func(s string) { t.Fatal(s) })
+}
+
+func TestNewWriterWithMapperFnWithNilFunc(t *testing.T) {
+	s := make([]int, 0, 3)
+	w := NewWriterWithMapperFn[int](newSliceWriter(&s))(nil)
+
+	assertEq("err", io.ErrClosedPipe, w.Write(nil, 1), func(s string) { t.Fatal(s) })
 }
