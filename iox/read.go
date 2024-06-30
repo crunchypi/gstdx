@@ -1,0 +1,494 @@
+package iox
+
+import (
+	"bytes"
+	"context"
+	"encoding/gob"
+	"errors"
+	"io"
+)
+
+// -----------------------------------------------------------------------------
+// New Reader iface + impl.
+// -----------------------------------------------------------------------------
+
+// Reader reads T, it is intended to act as a generic variant of io.Reader.
+type Reader[T any] interface {
+	Read(context.Context) (T, error)
+}
+
+// ReaderImpl implements Reader with it's Read method by deferring to 'Impl'.
+// This is for convenience, as you may use a functional implementation of Reader
+// without defining a new type (that's done for you here).
+type ReaderImpl[T any] struct {
+	Impl func(context.Context) (T, error)
+}
+
+// Read implements Reader by deferring to the internal "Impl" func.
+// If the internal "Impl" is not set, an io.EOF will be returned.
+func (impl ReaderImpl[T]) Read(ctx context.Context) (r T, err error) {
+	if impl.Impl == nil {
+		err = io.EOF
+		return
+	}
+
+	return impl.Impl(ctx)
+}
+
+// -----------------------------------------------------------------------------
+// New ReadCloser iface + impl.
+// -----------------------------------------------------------------------------
+
+// ReadCloser groups Reader with io.Closer.
+type ReadCloser[T any] interface {
+	io.Closer
+	Reader[T]
+}
+
+// ReadCloserImpl implements Reader and io.Closer with it's methods by deferring
+// to ImplC (closer) and ImplR (reader). This is for convenience, as you may use
+// a functional implementation of the interfaces wihout defining a new type.
+type ReadCloserImpl[T any] struct {
+	ImplC func() error
+	ImplR func(context.Context) (T, error)
+}
+
+// Read implements Closer by deferring to the internal "ImplC" func.
+// If the internal "ImplC" func is nil, nothing will happen.
+func (impl ReadCloserImpl[T]) Close() (err error) {
+	if impl.ImplC == nil {
+		return
+	}
+
+	return impl.ImplC()
+}
+
+// Read implements Reader by deferring to the internal "ImplR" func.
+// If the internal "ImplR" is not set, an io.EOF will be returned.
+func (impl ReadCloserImpl[T]) Read(ctx context.Context) (r T, err error) {
+	if impl.ImplR == nil {
+		err = io.EOF
+		return
+	}
+
+	return impl.ImplR(ctx)
+}
+
+// -----------------------------------------------------------------------------
+// Constructors.
+// -----------------------------------------------------------------------------
+
+// NewReaderFrom returns a Reader which yields values from the given vals.
+func NewReaderFrom[T any](vs ...T) Reader[T] {
+	i := 0
+	return ReaderImpl[T]{
+		Impl: func(ctx context.Context) (val T, err error) {
+			if i >= len(vs) {
+				return val, io.EOF
+			}
+
+			val = vs[i]
+			i++
+			return
+		},
+	}
+}
+
+// NewReaderFromBytes creates a new T reader from an io.Reader and Decoder.
+// It simply reads bytes from 'r', decodes them, and passes them along to the
+// caller. As such, the decoder must match the encoder used to create the bytes.
+// If 'r' is nil, an empty Reader is returned; if 'f' is nil, the decoder is set
+// to gob.NewDecoder. Example:
+//
+//	// Used as io.Reader
+//	b := bytes.NewBuffer(nil)
+//
+//	// Using json encoder, so the decoder has to be json in NewReaderFromBytes
+//	json.NewEncoder(b).Encode("test1")
+//	json.NewEncoder(b).Encode("test2")
+//
+//	r := NewReaderFromBytes[string](b)(
+//		func(r io.Reader) Decoder {
+//			return json.NewDecoder(r)
+//		},
+//	)
+//
+//	t.Log(r.Read(context.Background())) // "test1" <nil>
+//	t.Log(r.Read(context.Background())) // "test2" <nil>
+//	t.Log(r.Read(context.Background())) // "", io.EOF
+func NewReaderFromBytes[T any](r io.Reader) func(f decoderFn) Reader[T] {
+	return func(f func(io.Reader) Decoder) Reader[T] {
+		if r == nil {
+			return ReaderImpl[T]{}
+		}
+
+		var d Decoder = gob.NewDecoder(r)
+		if f != nil {
+			if _d := f(r); _d != nil {
+				d = _d
+			}
+		}
+
+		return ReaderImpl[T]{
+			Impl: func(ctx context.Context) (v T, err error) {
+				err = d.Decode(&v)
+				return
+			},
+		}
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Modifiers.
+// -----------------------------------------------------------------------------
+
+// NewReaderWithBatching returns a reader which batches 'r' into slices with
+// the specified 'size'.  If the size is not set (or negative), it will be set
+// to a small number. Note that the last slice may contain values when the
+// returned reader gives an io.EOF.
+func NewReaderWithBatching[T any](r Reader[T], size int) Reader[[]T] {
+	if r == nil {
+		return ReaderImpl[[]T]{}
+	}
+
+	if size <= 0 {
+		size = 8
+	}
+
+	return ReaderImpl[[]T]{
+		Impl: func(ctx context.Context) (s []T, err error) {
+			s = make([]T, 0, size)
+
+			var v T
+			for i := 0; i < size; i++ {
+				v, err = r.Read(ctx)
+				if err != nil {
+					break
+
+				}
+
+				s = append(s, v)
+			}
+
+			return s, err
+		},
+	}
+}
+
+// NewReaderWithUnbatching returns a reader of T from a reader of []T.
+// Note that there is some internal buffering, so you may want to use this
+// with caution as an unread buffer may cause value loss.
+func NewReaderWithUnbatching[T any](r Reader[[]T]) Reader[T] {
+	if r == nil {
+		return ReaderImpl[T]{}
+	}
+
+	var errCache error
+	var buf []T
+	return ReaderImpl[T]{
+		Impl: func(ctx context.Context) (val T, err error) {
+			if len(buf) > 0 {
+				val = buf[0]
+				buf = buf[1:]
+				return
+			}
+
+			if errCache != nil {
+				err = errCache
+				return
+			}
+
+			buf, err = r.Read(ctx)
+
+			switch {
+			case len(buf) == 0 && err != nil:
+				return val, err
+			case len(buf) == 0 && err == nil:
+				return val, io.EOF
+			case len(buf) != 0 && err != nil:
+				errCache = err
+				err = nil
+			case len(buf) != 0 && err == nil:
+			}
+
+			val = buf[0]
+			buf = buf[1:]
+			return
+		},
+	}
+}
+
+// NewReaderWithFilterFn returns a reader where filter 'f' is applied on
+// values coming from reader 'r', removing/skipping values when f(v) == false.
+func NewReaderWithFilterFn[T any](r Reader[T]) func(f func(v T) bool) Reader[T] {
+	return func(f func(v T) bool) Reader[T] {
+		if r == nil {
+			return ReaderImpl[T]{}
+		}
+		if f == nil {
+			return r
+		}
+
+		return ReaderImpl[T]{
+			Impl: func(ctx context.Context) (val T, err error) {
+				for val, err = r.Read(ctx); err == nil; val, err = r.Read(ctx) {
+					if f(val) {
+						return
+					}
+				}
+
+				return
+			},
+		}
+	}
+}
+
+// NewReaderWithMapperFn returns a reader where mapper 'f' is applied on
+// values coming from reader 'r'.
+func NewReaderWithMapperFn[T, U any](r Reader[T]) func(f func(T) U) Reader[U] {
+	return func(f func(T) U) Reader[U] {
+		if r == nil || f == nil {
+			return ReaderImpl[U]{}
+		}
+
+		return ReaderImpl[U]{
+			Impl: func(ctx context.Context) (valOut U, err error) {
+				valIn, err := r.Read(ctx)
+				if err != nil {
+					return valOut, err
+				}
+
+				return f(valIn), err
+			},
+		}
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Converters.
+// -----------------------------------------------------------------------------
+
+// ReaderIntoBytes creates an io.Reader from a Reader and Encoder.
+// It simply reads values from 'r', encodes them, and passes them along to the
+// caller. As such, when decoding values from the returned io.Reader one should
+// use a decoder which matches the encoder passed here. If 'r' is nil, an
+// empty (not nil) io.Reader is returned; if 'f' is nil, the encoder is set to
+// gob.NewEncoder. Example:
+//
+//	vr := NewReaderFrom("test1", "test2")
+//	br := ReaderIntoBytes(vr)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
+//
+//	// Instantly pass it to a decoder just so we may log out the values.
+//	dec := json.NewDecoder(br)
+//	val := ""
+//
+//	t.Log(dec.Decode(&val), val) // <nil>, "test1"
+//	t.Log(dec.Decode(&val), val) // <nil>, "test2"
+//	t.Log(dec.Decode(&val), val) // EOF, ""
+func ReaderIntoBytes[T any](r Reader[T]) func(f encoderFn) io.Reader {
+	return func(f func(io.Writer) Encoder) io.Reader {
+		if r == nil {
+			r = ReaderImpl[T]{}
+		}
+
+		b := bytes.NewBuffer(nil)
+		e := Encoder(gob.NewEncoder(b))
+		if f != nil {
+			if _e := f(b); _e != nil {
+				e = _e
+			}
+		}
+
+		return readWriteCloserImpl{
+			ImplR: func(p []byte) (n int, err error) {
+				v, err := r.Read(context.Background())
+				if err != nil {
+					return 0, err
+				}
+
+				err = e.Encode(v)
+				if err != nil {
+					return 0, err
+				}
+
+				return b.Read(p)
+			},
+		}
+	}
+}
+
+// ReaderIntoSlice reads all values from 'r' and returns them in a slice.
+// Note that the error, if any, will not be io.EOF.
+func ReaderIntoSlice[T any](r Reader[T]) (s []T, err error) {
+	if r == nil {
+		return []T{}, err
+	}
+
+	s = make([]T, 0, 32)
+	ctx := context.Background()
+	for v, err := r.Read(ctx); ; v, err = r.Read(ctx) {
+		if errors.Is(err, io.EOF) {
+			return s, nil
+		}
+		if err != nil {
+			return s, err
+		}
+
+		s = append(s, v)
+	}
+}
+
+// IntoMapKFn returns a func which creates a map[K]V using the given reader 'r'.
+// It does so by reading all elements of 'r' and storing them as keys. Vals
+// are defined with the given func 'f'. The error, if any, will not be io.EOF
+// Example:
+//
+//	r := NewReaderFrom(1, 2, 3)
+//	m, err := ReaderIntoMapKFn[int, int](r)(
+//		func(key int) (val int) {
+//			val = key + 1
+//			return
+//		},
+//	)
+//
+//	t.Log(m, err)	// map[1:2 2:3 3:4] <nil>
+func ReaderIntoMapKFn[K comparable, V any](r Reader[K]) func(f func(K) V) (map[K]V, error) {
+	return func(f func(K) V) (map[K]V, error) {
+		if r == nil || f == nil {
+			return map[K]V{}, nil
+		}
+
+		m := make(map[K]V)
+		ctx := context.Background()
+		for k, err := r.Read(ctx); ; k, err = r.Read(ctx) {
+			if errors.Is(err, io.EOF) {
+				return m, nil
+			}
+			if err != nil {
+				return m, err
+			}
+
+			m[k] = f(k)
+		}
+	}
+}
+
+// IntoMapVFn returns a func which creates a map[K]V using the given reader 'r'.
+// It does so by reading all elements of 'r'  and storing them as values for
+// keys that are defined using the given func 'f'.
+// Example:
+//
+//	r := NewReaderFrom(1, 2, 3)
+//	m, err := ReaderIntoMapVFn[int, int](r)(
+//		func(key int) (val int) {
+//			val = key - 1
+//			return
+//		},
+//	)
+//
+//	t.Log(m, err) // map[0:1, 1:2, 2:3] <nil>
+func ReaderIntoMapVFn[K comparable, V any](r Reader[V]) func(f func(V) K) (map[K]V, error) {
+	return func(f func(V) K) (map[K]V, error) {
+		if r == nil || f == nil {
+			return map[K]V{}, nil
+		}
+
+		m := make(map[K]V)
+		ctx := context.Background()
+		for v, err := r.Read(ctx); ; v, err = r.Read(ctx) {
+			if errors.Is(err, io.EOF) {
+				return m, nil
+			}
+			if err != nil {
+				return m, err
+			}
+
+			m[f(v)] = v
+		}
+	}
+}
+
+type ErrWrapped[T any] struct {
+	Err error
+	Val T
+}
+
+// ReaderIntoChan returns a chan which is fed the contents of 'r' from a new
+// goroutine. The error in the ErrWrapped[T] will not contain io.EOF.
+// Example:
+//
+//	r := NewReaderFrom(1, 2, 3)
+//	for ew := range ReaderIntoChan(r) {
+//		// Prints {<nil> 1} on 1st iteration.
+//		// Prints {<nil> 2} on 2nd iteration.
+//		// Prints {<nil> 3} on 3rd iteration.
+//		t.Log(ew)
+//	}
+func ReaderIntoChan[T any](r Reader[T]) <-chan ErrWrapped[T] {
+	ch := make(chan ErrWrapped[T])
+	if r == nil {
+		close(ch)
+		return ch
+	}
+
+	go func() {
+		defer close(ch)
+
+		ctx := context.Background()
+		for {
+			v, err := r.Read(ctx)
+			if errors.Is(err, io.EOF) {
+				return
+			}
+			if err != nil {
+				ch <- ErrWrapped[T]{Err: err}
+				return
+			}
+
+			ch <- ErrWrapped[T]{Val: v}
+		}
+	}()
+
+	return ch
+}
+
+// ReaderIntoGenerator returns a generator which reads from 'r'. The generator
+// will stop on the first error and the ErrWrapped[T] will not contain io.EOF.
+// Example:
+//
+//	r := NewReaderFrom(1, 2, 3)
+//	g := ReaderIntoGenerator(r)
+//
+//	for ev, ok := g(); ok; ev, ok = g() {
+//		// Prints {<nil> 1} on 1st iteration.
+//		// Prints {<nil> 2} on 2nd iteration.
+//		// Prints {<nil> 3} on 3rd iteration.
+//		t.Log(ev)
+//	}
+func ReaderIntoGenerator[T any](r Reader[T]) func() (val ErrWrapped[T], cont bool) {
+	sig := false
+	ctx := context.Background()
+	return func() (val ErrWrapped[T], cont bool) {
+		if r == nil {
+			return
+		}
+
+		if sig {
+			return
+		}
+
+		val.Val, val.Err = r.Read(ctx)
+		if errors.Is(val.Err, io.EOF) {
+			val.Err = nil
+			return
+		}
+		if val.Err != nil {
+			sig = true
+			cont = true
+			return
+		}
+
+		cont = true
+		return
+	}
+}

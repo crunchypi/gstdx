@@ -1,0 +1,585 @@
+package iox
+
+import (
+	"bytes"
+	"context"
+	"encoding/gob"
+	"encoding/json"
+	"io"
+	"testing"
+)
+
+// -----------------------------------------------------------------------------
+// Impls.
+// -----------------------------------------------------------------------------
+
+func TestReaderImplReadIdeal(t *testing.T) {
+	r := ReaderImpl[int]{}
+	r.Impl = func(ctx context.Context) (int, error) { return 1, nil }
+
+	val, err := r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", 1, val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderImplReadWithoutImpl(t *testing.T) {
+	r := ReaderImpl[int]{}
+
+	val, err := r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+func TestReadCloserImplReadIdeal(t *testing.T) {
+	rc := ReadCloserImpl[int]{}
+	rc.ImplR = func(ctx context.Context) (int, error) { return 1, nil }
+
+	val, err := rc.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", 1, val, func(s string) { t.Fatal(s) })
+}
+
+func TestReadCloserImplReadWithoutImpl(t *testing.T) {
+	rc := ReadCloserImpl[int]{}
+
+	val, err := rc.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+func TestReadCloserImplCloseIdeal(t *testing.T) {
+	rc := ReadCloserImpl[int]{}
+	rc.ImplC = func() error { return nil }
+
+	err := rc.Close()
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+}
+
+func TestReadCloserImplCloseWithoutImpl(t *testing.T) {
+	rc := ReadCloserImpl[int]{}
+
+	err := rc.Close()
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+}
+
+// -----------------------------------------------------------------------------
+// Constructors.
+// -----------------------------------------------------------------------------
+
+func TestNewReaderFrom(t *testing.T) {
+	r := NewReaderFrom(1, 2)
+
+	err := *new(error)
+	val := 0
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", 1, val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", 2, val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewReaderFromBytesIdeal(t *testing.T) {
+	b := bytes.NewBuffer(nil)
+	json.NewEncoder(b).Encode("test1")
+	json.NewEncoder(b).Encode("test2")
+
+	f := func(r io.Reader) Decoder { return json.NewDecoder(r) }
+	r := NewReaderFromBytes[string](b)(f)
+
+	err := *new(error)
+	val := ""
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test1", val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", "", val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewReaderFromBytesWithNilReader(t *testing.T) {
+	r := NewReaderFromBytes[string](nil)(nil)
+
+	err := *new(error)
+	val := ""
+
+	val, err = r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", "", val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewReaderFromBytesWithNilDecoder(t *testing.T) {
+	b := bytes.NewBuffer(nil)
+	gob.NewEncoder(b).Encode("test1")
+	gob.NewEncoder(b).Encode("test2")
+
+	r := NewReaderFromBytes[string](b)(nil)
+
+	err := *new(error)
+	val := ""
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test1", val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", "", val, func(s string) { t.Fatal(s) })
+}
+
+// -----------------------------------------------------------------------------
+// Modifiers.
+// -----------------------------------------------------------------------------
+
+func TestNewReaderWithBatchingIdeal(t *testing.T) {
+	vs := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	vr := NewReaderFrom(vs...)
+	sr := NewReaderWithBatching(vr, 0)
+
+	s := []int{}
+	err := *new(error)
+
+	s, err = sr.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", vs[0:8], s, func(s string) { t.Fatal(s) })
+
+	s, err = sr.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", vs[8:], s, func(s string) { t.Fatal(s) })
+}
+
+func TestNewReaderWithBatchingWithNilReader(t *testing.T) {
+	sr := NewReaderWithBatching[int](nil, 0)
+
+	s, err := sr.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", *new([]int), s, func(s string) { t.Fatal(s) })
+}
+
+func TestNewReaderWithUnbatchingIdeal(t *testing.T) {
+	sr := NewReaderWithBatching(NewReaderFrom(1, 3, 2), 2)
+	vr := NewReaderWithUnbatching(sr)
+
+	err := *new(error)
+	val := 0
+
+	val, err = vr.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", 1, val, func(s string) { t.Fatal(s) })
+
+	val, err = vr.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", 3, val, func(s string) { t.Fatal(s) })
+
+	val, err = vr.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", 2, val, func(s string) { t.Fatal(s) })
+
+	val, err = vr.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewReaderWithUnbatchingWithNilReader(t *testing.T) {
+	vr := NewReaderWithUnbatching[int](nil)
+
+	val, err := vr.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewReaderWithUnbatchingWithEmptyBatchAndNilErr(t *testing.T) {
+	sr := ReaderImpl[[]int]{}
+	sr.Impl = func(ctx context.Context) (s []int, err error) { return }
+	vr := NewReaderWithUnbatching(sr)
+
+	val, err := vr.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewReaderWithUnbatchingWithEmptyBatchAndErr(t *testing.T) {
+	sr := ReaderImpl[[]int]{}
+	sr.Impl = func(ctx context.Context) (s []int, err error) { err = io.EOF; return }
+	vr := NewReaderWithUnbatching(sr)
+
+	val, err := vr.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewReaderWithFilterFnIdeal(t *testing.T) {
+	r := NewReaderFrom(1, 2, 3)
+	r = NewReaderWithFilterFn(r)(func(v int) bool { return v%2 == 0 })
+
+	err := *new(error)
+	val := 0
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", 2, val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewReaderWithFilterFnWithNilReader(t *testing.T) {
+	r := NewReaderWithFilterFn[int](nil)(func(v int) bool { return true })
+
+	val, err := r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewReaderWithFilterFnWithNilFunc(t *testing.T) {
+	r := NewReaderFrom(2)
+	r = NewReaderWithFilterFn(r)(nil)
+
+	err := *new(error)
+	val := 0
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", 2, val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewReaderWithMapperFnIdeal(t *testing.T) {
+	r := NewReaderFrom(1, 2)
+	r = NewReaderWithMapperFn[int, int](r)(
+		func(v int) int {
+			return v * -1
+		},
+	)
+
+	err := *new(error)
+	val := 0
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", -1, val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", -2, val, func(s string) { t.Fatal(s) })
+
+	val, err = r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewReaderWithMapperFnWithNilReader(t *testing.T) {
+	r := NewReaderWithMapperFn[int, int](nil)(
+		func(v int) int {
+			return v * -1
+		},
+	)
+
+	err := *new(error)
+	val := 0
+
+	val, err = r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+func TestNewReaderWithMapperFnWithNilFunc(t *testing.T) {
+	r := NewReaderFrom(1, 2)
+	r = NewReaderWithMapperFn[int, int](r)(nil)
+
+	err := *new(error)
+	val := 0
+
+	val, err = r.Read(nil)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val, func(s string) { t.Fatal(s) })
+}
+
+// -----------------------------------------------------------------------------
+// Converters.
+// -----------------------------------------------------------------------------
+
+func TestReaderIntoBytesIdeal(t *testing.T) {
+	vr := NewReaderFrom("test1", "test2")
+	br := ReaderIntoBytes(vr)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
+
+	dec := json.NewDecoder(br)
+	err := *new(error)
+	val := ""
+
+	err = dec.Decode(&val)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test1", val, func(s string) { t.Fatal(s) })
+
+	err = dec.Decode(&val)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+
+	err = dec.Decode(&val)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoBytesWithNilReader(t *testing.T) {
+	br := ReaderIntoBytes[int](nil)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
+
+	dec := json.NewDecoder(br)
+	err := *new(error)
+	val := ""
+
+	err = dec.Decode(&val)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", "", val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoBytesWithNilEncoder(t *testing.T) {
+	vr := NewReaderFrom("test1", "test2")
+	br := ReaderIntoBytes(vr)(nil)
+
+	dec := gob.NewDecoder(br)
+	err := *new(error)
+	val := ""
+
+	err = dec.Decode(&val)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test1", val, func(s string) { t.Fatal(s) })
+
+	err = dec.Decode(&val)
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+
+	err = dec.Decode(&val)
+	assertEq("err", io.EOF, err, func(s string) { t.Fatal(s) })
+	assertEq("val", "test2", val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoBytesWithEncodeError(t *testing.T) {
+	vr := NewReaderFrom(make(chan int))
+	br := ReaderIntoBytes(vr)(func(w io.Writer) Encoder { return json.NewEncoder(w) })
+
+	dec := json.NewDecoder(br)
+	err := *new(error)
+	val := ""
+
+	err = dec.Decode(&val)
+
+	want := "json: unsupported type: chan int"
+	have := err.Error()
+	assertEq("err", want, have, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoSliceIdeal(t *testing.T) {
+	r := NewReaderFrom(1, 2, 3)
+	s, err := ReaderIntoSlice(r)
+
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("s", []int{1, 2, 3}, s, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoSliceWithNilReader(t *testing.T) {
+	s, err := ReaderIntoSlice[int](nil)
+
+	assertEq("err", nil, err, func(s string) { t.Fatal(s) })
+	assertEq("s", []int{}, s, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoSliceWithCustomError(t *testing.T) {
+	r := ReaderImpl[int]{}
+	r.Impl = func(ctx context.Context) (int, error) { return 0, io.ErrClosedPipe }
+	s, err := ReaderIntoSlice(r)
+
+	assertEq("err", io.ErrClosedPipe, err, func(s string) { t.Fatal(s) })
+	assertEq("s", []int{}, s, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoMapKFnIdeal(t *testing.T) {
+	r := NewReaderFrom(1, 2)
+	m, err := ReaderIntoMapKFn[int, int](r)(func(k int) int { return k + 1 })
+
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{1: 2, 2: 3}, m, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoMapKFnWithNilReader(t *testing.T) {
+	m, err := ReaderIntoMapKFn[int, int](nil)(func(k int) int { return k + 1 })
+
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{}, m, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoMapKFnWithNilFunc(t *testing.T) {
+	r := NewReaderFrom(1, 2)
+	m, err := ReaderIntoMapKFn[int, int](r)(nil)
+
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{}, m, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoMapKFnWithCustomError(t *testing.T) {
+	r := ReaderImpl[int]{}
+	r.Impl = func(ctx context.Context) (int, error) { return 0, io.ErrClosedPipe }
+	m, err := ReaderIntoMapKFn[int, int](r)(func(k int) int { return k })
+
+	assertEq("err", io.ErrClosedPipe, err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{}, m, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoMapVFnIdeal(t *testing.T) {
+	r := NewReaderFrom(1, 2)
+	m, err := ReaderIntoMapVFn[int, int](r)(func(v int) int { return v - 1 })
+
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{0: 1, 1: 2}, m, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoMapVFnWithNilReader(t *testing.T) {
+	m, err := ReaderIntoMapVFn[int, int](nil)(func(v int) int { return v + 1 })
+
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{}, m, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoMapVFnWithNilFunc(t *testing.T) {
+	r := NewReaderFrom(1, 2)
+	m, err := ReaderIntoMapVFn[int, int](r)(nil)
+
+	assertEq("err", *new(error), err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{}, m, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoMapVFnWithCustomError(t *testing.T) {
+	r := ReaderImpl[int]{}
+	r.Impl = func(ctx context.Context) (int, error) { return 0, io.ErrClosedPipe }
+	m, err := ReaderIntoMapVFn[int, int](r)(func(k int) int { return k })
+
+	assertEq("err", io.ErrClosedPipe, err, func(s string) { t.Fatal(s) })
+	assertEq("map", map[int]int{}, m, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoChanIdeal(t *testing.T) {
+	r := NewReaderFrom(1, 2)
+	ch := ReaderIntoChan(r)
+
+	ok := false
+	val := ErrWrapped[int]{}
+
+	val, ok = <-ch
+	assertEq("ok", true, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 1, val.Val, func(s string) { t.Fatal(s) })
+
+	val, ok = <-ch
+	assertEq("ok", true, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 2, val.Val, func(s string) { t.Fatal(s) })
+
+	val, ok = <-ch
+	assertEq("ok", false, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoChanWithNilReader(t *testing.T) {
+	ch := ReaderIntoChan[int](nil)
+
+	ok := false
+	val := ErrWrapped[int]{}
+
+	val, ok = <-ch
+	assertEq("ok", false, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoChanWithCustomError(t *testing.T) {
+	r := ReaderImpl[int]{}
+	r.Impl = func(ctx context.Context) (int, error) { return 0, io.ErrClosedPipe }
+	ch := ReaderIntoChan(r)
+
+	ok := false
+	val := ErrWrapped[int]{}
+
+	val, ok = <-ch
+	assertEq("ok", true, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", io.ErrClosedPipe, val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+
+	val, ok = <-ch
+	assertEq("ok", false, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoGeneratorIdeal(t *testing.T) {
+	r := NewReaderFrom(1, 2)
+	g := ReaderIntoGenerator(r)
+
+	ok := false
+	val := ErrWrapped[int]{}
+
+	val, ok = g()
+	assertEq("ok", true, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 1, val.Val, func(s string) { t.Fatal(s) })
+
+	val, ok = g()
+	assertEq("ok", true, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 2, val.Val, func(s string) { t.Fatal(s) })
+
+	val, ok = g()
+	assertEq("ok", false, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoGeneratorWithNilReader(t *testing.T) {
+	g := ReaderIntoGenerator[int](nil)
+
+	ok := false
+	val := ErrWrapped[int]{}
+
+	val, ok = g()
+	assertEq("ok", false, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+}
+
+func TestReaderIntoGeneratorWithCustomError(t *testing.T) {
+	r := ReaderImpl[int]{}
+	r.Impl = func(ctx context.Context) (int, error) { return 0, io.ErrClosedPipe }
+	g := ReaderIntoGenerator(r)
+
+	ok := false
+	val := ErrWrapped[int]{}
+
+	val, ok = g()
+	assertEq("ok", true, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", io.ErrClosedPipe, val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+
+	val, ok = g()
+	assertEq("ok", false, ok, func(s string) { t.Fatal(s) })
+	assertEq("err", *new(error), val.Err, func(s string) { t.Fatal(s) })
+	assertEq("val", 0, val.Val, func(s string) { t.Fatal(s) })
+}
