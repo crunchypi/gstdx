@@ -20,6 +20,28 @@ func TestAssertEqWithNeq(t *testing.T) {
 	AssertEq("", 1, 2, func(_s string) { s = _s })
 
 	if s == "" {
-		t.Fatal("unexpected 's': uset")
+		t.Fatal("unexpected 's': unset")
+	}
+}
+
+func TestAssertNeqWithNilF(t *testing.T) {
+	AssertNeq("", 1, 1, nil)
+}
+
+func TestAssertNeqWithEq(t *testing.T) {
+	s := ""
+	AssertNeq("", 1, 1, func(_s string) { s = _s })
+
+	if s == "" {
+		t.Fatal("unexpected 's': unset")
+	}
+}
+
+func TestAssertNeqWithNEq(t *testing.T) {
+	s := ""
+	AssertNeq("", 1, 2, func(_s string) { s = _s })
+
+	if s != "" {
+		t.Fatal("unexpected 's': set")
 	}
 }
